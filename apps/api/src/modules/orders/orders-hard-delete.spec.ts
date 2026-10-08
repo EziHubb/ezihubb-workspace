@@ -32,6 +32,7 @@ function setup(orderOverrides: Record<string, unknown> = {}) {
     payment:               { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
     orderItem:             { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
     storeOrderFulfillment: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+    economicOrderContext: {findUnique:jest.fn().mockResolvedValue(null)},
     sellerLedgerEntry:     { findMany: jest.fn().mockResolvedValue([]), createMany: jest.fn(), deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
     storeOrder:            { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
     orderStatusHistory:    { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },

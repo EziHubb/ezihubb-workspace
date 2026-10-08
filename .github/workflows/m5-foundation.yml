@@ -1,0 +1,61 @@
+name: M5 isolated foundation verification
+# Explicit invocation only. No production credentials, deployment or provider I/O.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: m5-foundation-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm nx run api:m5-test --skipNxCache
+      - run: pnpm nx run api:m5-contention-test --skipNxCache
+      - run: pnpm nx run api:m5-https-test --skipNxCache
+      - run: pnpm nx run api:m5-sandbox-test --skipNxCache
+      - run: pnpm nx run api:m5-recovery-test --skipNxCache
+      - run: pnpm nx run api:m5-release-test --skipNxCache
+      - run: pnpm nx run api:m5-lint --skipNxCache
+      - run: pnpm nx run api:m5-typecheck --skipNxCache
+      - run: pnpm nx run api:m5-init --skipNxCache
+      - run: pnpm nx run api:m5-doctor --skipNxCache
+      - run: pnpm nx run api:m5-up --skipNxCache
+      - name: Wait for local PostgreSQL bootstrap
+        run: |
+          for attempt in $(seq 1 60); do
+            if docker compose --project-name ezihubb-m5 --env-file .env.m5.local --file docker/m5/compose.yml exec -T postgres pg_isready -U ezihubb_m5 -d ezihubb_m5_fresh; then
+              break
+            fi
+            sleep 2
+          done
+      - run: pnpm nx run api:m5-verify --skipNxCache
+      - run: pnpm nx run api:m5-contention --skipNxCache
+      # Native local drills only; not M5.3 sandbox/full-stack acceptance or release.
+      - run: pnpm nx run api:m5-recovery --skipNxCache
+      - name: Stop only owned local stack; keep evidence
+        if: always()
+        run: pnpm nx run api:m5-stop --skipNxCache
+      # Collection succeeds when the dossier is written, NOT when release is GO.
+      # The strict m5-release-check remains separate; no deploy exists here.
+      - name: Collect acceptance dossier (may be NO_GO)
+        if: always()
+        run: pnpm nx run api:m5-release-report --skipNxCache
+      - name: Retain sanitized reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m5-foundation-evidence
+          path: |
+            artifacts/m5/*.json
+            artifacts/m5/*.md
+          if-no-files-found: warn

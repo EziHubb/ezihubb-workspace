@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import { safeLocalStorage } from '../safe-local-storage';
 import { apiClient } from '@ezihubb/api-client';
 import type { CartDto, CartItemDto, CartTotals } from '@ezihubb/types';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -268,6 +269,7 @@ export const useCartStore = create<CartStore>()(
     }),
     {
       name: 'ezihubb-cart',
+      storage: createJSONStorage(() => safeLocalStorage),
       // Only persist sessionId — cart data is always fetched fresh from server
       partialize: (state) => ({ sessionId: state.sessionId }),
     },

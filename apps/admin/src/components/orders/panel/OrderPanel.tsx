@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CalendarClock, Gift, Loader2, MoreHorizontal, Printer, Trash2, Undo2, X, XCircle,
@@ -9,6 +10,7 @@ import { API_ROUTES, newClientMessageId } from '@ezihubb/constants';
 import { api } from '../../../lib/api-client';
 import { toast } from '../../../lib/store/toast.store';
 import { useDialog } from '../../../contexts/DialogContext';
+import { useStoreContext } from '../../../lib/store-context';
 import { OrderProgressSelect } from '../queue/OrderProgressBadge';
 import type { ProgressStep } from '../queue/types';
 import { OrderDetailsTab } from './OrderDetailsTab';
@@ -67,6 +69,10 @@ export function OrderPanel({
   focusMessaging, readOnly = false,
 }: Props) {
   const qc = useQueryClient();
+  const { data: session, status: sessionStatus } = useSession();
+  const activeStore = useStoreContext();
+  const actor = session?.user as { id?: string; storeId?: string; role?: string } | undefined;
+  const actorId = actor?.id;
   const dialog = useDialog();
   const [tab, setTab]           = useState<'details' | 'earnings'>('details');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -102,10 +108,10 @@ export function OrderPanel({
   });
 
   const earningsQuery = useQuery({
-    queryKey: QK.earnings(storeOrderId),
+    queryKey: [...QK.earnings(storeOrderId), actorId, actor?.storeId, actor?.role, sessionStatus, activeStore, storeQuery],
     // Not fetched until the tab is opened: most of the time the seller is
     // packing an order, not auditing what it paid.
-    enabled:  tab === 'earnings',
+    enabled:  tab === 'earnings' && sessionStatus === 'authenticated' && !!actorId,
     queryFn:  () => api.get<OrderPanelEarnings>(`${API_ROUTES.ADMIN.ORDER_PANEL_EARNINGS(storeOrderId)}${storeQuery}`),
   });
 
@@ -414,6 +420,7 @@ export function OrderPanel({
 
               {tab === 'earnings' && (
                 <OrderEarningsTab
+                  storeOrderId={storeOrderId}
                   data={earningsQuery.data}
                   // isPending, not isLoading: on the first switch the query has
                   // only just been enabled, and isLoading is briefly false with

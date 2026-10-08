@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { EncryptionService } from '../../common/services/encryption.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FinancesService } from './finances.service';
+import { legacyLedgerWhere } from './finance-reporting-scope';
 
 describe('legacy finance overview isolation', () => {
   it('keeps positive historical balances readable without advertising withdrawable funds', async () => {
@@ -28,7 +29,7 @@ describe('legacy finance overview isolation', () => {
       hasFundsReadyForDeposit: false,
     });
     expect(prisma.sellerLedgerEntry.aggregate).toHaveBeenCalledWith({
-      where: { storeId: 'store-fixture', payoutId: null },
+      where: legacyLedgerWhere({ storeId: 'store-fixture', payoutId: null }),
       _sum: { amount: true },
     });
   });

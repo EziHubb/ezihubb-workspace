@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { readCheckoutReference, writeCheckoutReference } from '../../lib/checkout-recovery';
 import { useTranslations } from 'next-intl';
 import { Lock } from 'lucide-react';
 import {
@@ -9,7 +10,7 @@ import {
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js';
-import { loadStripe } from '@stripe/stripe-js';
+import { loadStripe } from '@stripe/stripe-js/pure';
 import type { Appearance } from '@stripe/stripe-js';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import { apiClient } from '@ezihubb/api-client';
@@ -17,9 +18,7 @@ import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount } from '@ezihubb/utils';
 
 // ── Stripe promise (singleton per app session) ─────────────────────────────────
-const stripePromise = loadStripe(
-  process.env['NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY'] ?? '',
-);
+const STRIPE_PUBLIC_KEY = process.env['NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY'] ?? '';
 
 const PAYPAL_CLIENT_ID = process.env['NEXT_PUBLIC_PAYPAL_CLIENT_ID'] ?? '';
 
@@ -236,12 +235,12 @@ function StripeInnerForm({
 // ── PayPal panel ──────────────────────────────────────────────────────────────
 
 function PaypalPanel({
-  orderId,
+  paypalOrderId,
   orderNumber,
   onSuccess,
   onBack,
 }: {
-  orderId:     string;
+  paypalOrderId: string;
   orderNumber: string;
   onSuccess:   (orderNumber: string) => void;
   onBack:      () => void;
@@ -269,13 +268,7 @@ function PaypalPanel({
 
         <PayPalButtons
           style={{ layout: 'vertical', color: 'gold', shape: 'rect', height: 45 }}
-          createOrder={async () => {
-            const res = await apiClient.post<{ paypalOrderId: string }>(
-              API_ROUTES.PAYMENTS.PAYPAL_CREATE_ORDER,
-              { orderId },
-            );
-            return res.paypalOrderId;
-          }}
+          createOrder={async () => paypalOrderId}
           onApprove={async (data) => {
             await apiClient.post(API_ROUTES.PAYMENTS.PAYPAL_CAPTURE, {
               paypalOrderId: data.orderID,
@@ -314,6 +307,7 @@ interface PaymentFormProps {
   locale:       string;
   onSuccess:    (orderNumber: string) => void;
   onBack:       () => void;
+  boundProvider?: 'STRIPE' | 'PAYPAL' | null;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -326,9 +320,63 @@ export function PaymentForm({
   locale,
   onSuccess,
   onBack,
+  boundProvider,
 }: PaymentFormProps) {
   const t = useTranslations('checkout.paymentForm');
-  const [method, setMethod] = useState<'card' | 'paypal'>('card');
+  const [method, setMethod] = useState<'card' | 'paypal'>(STRIPE_PUBLIC_KEY ? 'card' : 'paypal');
+  const [locked, setLocked] = useState(!!clientSecret);
+  const [ready, setReady] = useState(false);
+  const [secret, setSecret] = useState(clientSecret);
+  const [paypalOrderId, setPaypalOrderId] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
+  const storageKey = `economic-payment-method:${orderId}`;
+  const vi = locale === 'vi';
+  const stripePromise = useMemo(() => secret && STRIPE_PUBLIC_KEY ? loadStripe(STRIPE_PUBLIC_KEY) : null, [secret]);
+
+  useEffect(() => {
+    try {
+      const saved = readCheckoutReference(storageKey);
+      if (saved !== null && saved !== 'card' && saved !== 'paypal') throw new Error('Invalid method');
+      const bound = boundProvider === 'STRIPE' ? 'card' : boundProvider === 'PAYPAL' ? 'paypal' : null;
+      if (saved || clientSecret || bound) {
+        const restored = bound ?? (clientSecret ? 'card' : saved as 'card' | 'paypal');
+        if (bound && saved && bound !== saved) throw new Error('Payment choice does not match the frozen order');
+        setMethod(restored);
+        if (!writeCheckoutReference(storageKey, restored)) throw new Error('Payment choice persistence is unavailable');
+        setLocked(true);
+      }
+      setReady(true);
+    } catch {
+      setError(vi ? 'Không thể khôi phục lựa chọn thanh toán. Vui lòng liên hệ hỗ trợ với mã đơn hàng.'
+        : 'Unable to restore the payment choice. Contact support with your order number.');
+    }
+  }, [storageKey, clientSecret, boundProvider, vi]);
+
+  const beginPayment = async () => {
+    if (inFlight.current || !ready) return;
+    inFlight.current = true;
+    setBusy(true); setError('');
+    try {
+      // Persist before sending: a timeout must not offer a new provider.
+      const saved = readCheckoutReference(storageKey);
+      if (saved && saved !== method) throw new Error('Payment method is already selected. Reload to recover it.');
+      if (!writeCheckoutReference(storageKey, method)) throw new Error('Enable cookies or session storage to safely resume payment.');
+      setLocked(true);
+      if (method === 'card') {
+        const result = await apiClient.post<{ clientSecret: string }>(API_ROUTES.PAYMENTS.INTENT, { orderId });
+        if (!result.clientSecret) throw new Error('Payment requires reconciliation. Contact support with your order number.');
+        setSecret(result.clientSecret);
+      } else {
+        const result = await apiClient.post<{ paypalOrderId: string }>(API_ROUTES.PAYMENTS.PAYPAL_CREATE_ORDER, { orderId });
+        if (!result.paypalOrderId) throw new Error('Payment requires reconciliation. Contact support with your order number.');
+        setPaypalOrderId(result.paypalOrderId);
+      }
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : t('paymentFailed'));
+    } finally { inFlight.current = false; setBusy(false); }
+  };
 
   // Computed once: the theme colour cannot change while the buyer is paying,
   // and a fresh object on every render would make react-stripe-js reapply the
@@ -350,36 +398,44 @@ export function PaymentForm({
           Hidden entirely when PayPal is not configured: a control offering one
           option is decoration, and it used to render as a solid coloured bar
           with nothing to switch to. */}
-      {PAYPAL_CLIENT_ID && (
-        <div
-          role="radiogroup"
-          aria-label={t('methodLabel')}
+      {!secret && !paypalOrderId && (
+        <fieldset
+          disabled={locked || busy || !ready}
           className="flex gap-1 p-1 bg-background border border-border rounded-lg"
         >
+          <legend className="px-2 text-sm font-medium">{t('methodLabel')}</legend>
           {(['card', 'paypal'] as const).map((option) => {
+            if (option === 'card' ? !STRIPE_PUBLIC_KEY : !PAYPAL_CLIENT_ID) return null;
             const selected = method === option;
             return (
-              <button
+              <label
                 key={option}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => setMethod(option)}
-                className={`flex-1 py-2 text-sm rounded-md transition-colors ${
+                htmlFor={`payment-provider-${option}`}
+                className={`flex flex-1 items-center justify-center gap-2 min-h-11 px-3 text-sm rounded-md transition-colors ${
                   selected
                     ? 'bg-surface text-secondary font-semibold border border-border shadow-sm'
                     : 'border border-transparent text-muted font-medium hover:text-secondary'
                 }`}
               >
+                <input id={`payment-provider-${option}`} type="radio" name="payment-provider" value={option} checked={selected}
+                  onChange={() => setMethod(option)} className="accent-primary" />
                 {option === 'card' ? t('cardTab') : t('paypalTab')}
-              </button>
+              </label>
             );
           })}
-        </div>
+        </fieldset>
       )}
-
-      {method === 'card' ? (
-        <Elements stripe={stripePromise} options={{ clientSecret, appearance }}>
+      {error && <p role="alert" className="text-sm text-error">{error}</p>}
+      {locked && <p className="text-sm text-muted">{vi
+        ? 'Phương thức đã được chọn cho đơn này. Nếu có lỗi, thử lại cùng phương thức hoặc liên hệ hỗ trợ.'
+        : 'This order is bound to the selected method. If an error occurs, retry the same method or contact support.'}</p>}
+      {!secret && !paypalOrderId && <button type="button" onClick={beginPayment}
+        disabled={busy || !ready || (method === 'card' ? !STRIPE_PUBLIC_KEY : !PAYPAL_CLIENT_ID)}
+        className="w-full min-h-11 rounded-button bg-primary px-4 py-3 font-semibold text-white disabled:opacity-50">
+        {busy ? t('processing') : vi ? 'Tiếp tục với phương thức đã chọn' : 'Continue with selected method'}
+      </button>}
+      {secret && method === 'card' && (
+        <Elements stripe={stripePromise} options={{ clientSecret: secret, appearance }}>
           <StripeInnerForm
             orderNumber={orderNumber}
             totalAmount={totalAmount}
@@ -388,9 +444,10 @@ export function PaymentForm({
             onBack={onBack}
           />
         </Elements>
-      ) : (
+      )}
+      {paypalOrderId && method === 'paypal' && (
         <PaypalPanel
-          orderId={orderId}
+          paypalOrderId={paypalOrderId}
           orderNumber={orderNumber}
           onSuccess={onSuccess}
           onBack={onBack}

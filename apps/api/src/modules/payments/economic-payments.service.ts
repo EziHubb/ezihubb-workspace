@@ -10,6 +10,7 @@ import { requireEconomicCheckout } from '../finances/economic-checkout';
 import { claimEconomicOperation, markEconomicOperationAmbiguous } from '../finances/economic-durability';
 import { createEconomicPayment, PaymentCreationBinding } from './economic-payment-intent';
 import { paypalEconomicCaptureReader, stripeEconomicCaptureReader } from './economic-capture-readers';
+import { EconomicRefundsService } from '../finances/economic-refunds.service';
 
 const readOptions = { timeout: 10_000, maxNetworkRetries: 0 };
 function record(value: unknown): Record<string, unknown> {
@@ -48,10 +49,12 @@ export function verifyPaypalCreatedPayment(raw: unknown, binding: PaymentCreatio
   return { id: order['id'], approvalUrl: typeof approve === 'string' ? approve : '' };
 }
 
-/** Versioned producer/callback adapter. No payout, refund, fulfillment or legacy event publishing. */
+/** Versioned producer/callback adapter. Refund webhooks only reconcile existing
+ * dispatched requests; no webhook authorizes a new refund or legacy paid job. */
 @Injectable()
 export class EconomicPaymentsService {
-  constructor(private readonly prisma: PrismaService, private readonly config: ConfigService) {}
+  constructor(private readonly prisma: PrismaService, private readonly config: ConfigService,
+    private readonly refunds: EconomicRefundsService) {}
 
   hasContext(orderId: string) { return this.prisma.economicOrderContext.findUnique({ where: { orderId } }); }
 
@@ -183,7 +186,36 @@ export class EconomicPaymentsService {
       const op = await this.prisma.economicOperation.findFirstOrThrow({ where: { contextId: context.id, kind: 'CAPTURE', provider: 'STRIPE' } });
       const { stripe, account } = this.stripeScope(context.provenance);
       await verifyAndBookEconomicCapture(this.prisma, op.id, stripeEconomicCaptureReader(stripe, account, context.provenance));
-    } else if (type === 'charge.refunded' || type.startsWith('charge.dispute.')) {
+    } else if (type === 'charge.refunded') {
+      // A charge notification represents cumulative refunds, not one refund.
+      // Recover only already-bound requests, then compare fresh provider totals
+      // with immutable settlements. An external/unplanned adjustment stays held.
+      const requests = await this.prisma.economicRefundRequest.findMany({ where: { capture: { contextId: context.id, provider: 'STRIPE' },
+        operation: { state: { in: ['DISPATCHED', 'NEEDS_RECONCILIATION'] }, providerReference: { not: null } } }, include: { operation: true } });
+      for (const request of requests) {
+        const reference = request.operation.providerReference;
+        if (!reference) return this.holdForReconciliation(context.id);
+        await this.refunds.reconcileWebhook(context.id, 'STRIPE', reference, request.operationId);
+      }
+      const capture = await this.prisma.economicCapture.findUnique({ where: { contextId: context.id } });
+      if (!capture || capture.provider !== 'STRIPE' || !/^ch_[A-Za-z0-9]+$/.test(capture.providerReference)) return this.holdForReconciliation(context.id);
+      const { stripe, account } = this.stripeScope(context.provenance);
+      if (capture.providerAccount !== account || (await stripe.accounts.retrieve(null)).id !== account) throw new Error('Stripe adjustment account mismatch');
+      const original = await stripe.charges.retrieve(capture.providerReference);
+      const completed = await this.prisma.economicRefund.findMany({ where: { request: { captureId: capture.id } }, select: { amountMinor: true } });
+      const recorded = completed.reduce((sum, row) => sum + row.amountMinor, 0n);
+      if (original.id !== capture.providerReference || original.payment_intent !== paymentId || original.livemode !== (context.provenance === 'LIVE')
+        || original.currency !== capture.currency.toLowerCase() || original.disputed || !original.paid || !original.captured
+        || !Number.isSafeInteger(original.amount_captured) || BigInt(original.amount_captured) !== capture.amountMinor
+        || !Number.isSafeInteger(original.amount_refunded) || BigInt(original.amount_refunded) !== recorded || recorded === 0n) {
+        return this.holdForReconciliation(context.id);
+      }
+      // Existing unknown-adjustment/dispute holds are never cleared implicitly.
+    } else if (type.startsWith('refund.') && typeof object['id'] === 'string') {
+      const metadata = object['metadata'] as { economicRefundOperationId?: unknown } | undefined;
+      const hint = typeof metadata?.economicRefundOperationId === 'string' ? metadata.economicRefundOperationId : undefined;
+      if (!await this.refunds.reconcileWebhook(context.id, 'STRIPE', object['id'], hint)) await this.holdForReconciliation(context.id);
+    } else if (type.startsWith('charge.dispute.')) {
       await this.holdForReconciliation(context.id);
     }
     // Do not mark a recoverable failed attempt terminal or fall into the legacy event chain.
@@ -221,13 +253,16 @@ export class EconomicPaymentsService {
       const { merchant, accessToken } = this.paypalScope(context.provenance);
       if (typeof captureId !== 'string') throw new Error('Missing PayPal capture lookup');
       await verifyAndBookEconomicCapture(this.prisma, op.id, paypalEconomicCaptureReader({ merchantId: merchant, provenance: context.provenance, captureId, accessToken }));
-    } else if (type === 'PAYMENT.CAPTURE.REFUNDED' || type === 'PAYMENT.CAPTURE.REVERSED') {
+    } else if (type === 'PAYMENT.CAPTURE.REFUNDED' && typeof object['id'] === 'string') {
+      const hint = typeof object['invoice_id'] === 'string' ? object['invoice_id'] : undefined;
+      if (!await this.refunds.reconcileWebhook(context.id, 'PAYPAL', object['id'], hint)) await this.holdForReconciliation(context.id);
+    } else if (type === 'PAYMENT.CAPTURE.REVERSED' || type === 'PAYMENT.CAPTURE.REFUNDED') {
       await this.holdForReconciliation(context.id);
     }
     return true;
   }
 
-  private async holdForReconciliation(contextId: string) {
+  private async holdForReconciliation(contextId: string): Promise<never> {
     // A signed external refund/reversal notification cannot become available funds
     // while M4 original-allocation reconciliation is pending. No guessed refund amount.
     await this.prisma.economicBalanceLot.updateMany({ where: { capture: { contextId }, holdReason: null },

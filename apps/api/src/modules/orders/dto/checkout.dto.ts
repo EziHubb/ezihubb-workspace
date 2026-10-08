@@ -1,4 +1,4 @@
-import { IsBoolean, IsEmail, IsOptional, IsString, Length, MaxLength, ValidateNested } from 'class-validator';
+import { IsBoolean, IsEmail, IsOptional, IsString, Length, Matches, MaxLength, ValidateNested } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type, Transform } from 'class-transformer';
 
@@ -48,6 +48,11 @@ export class ShippingAddressDto {
 }
 
 export class CheckoutDto {
+  @ApiProperty({ description: 'Non-secret client request identity; retry unchanged after timeout' })
+  @IsString()
+  @Matches(/^[A-Za-z0-9_-]{12,80}$/)
+  idempotencyKey: string;
+
   // Optional: an all-digital cart never collects a shipping address — the
   // cost is instead automatically resolved from each seller's Delivery
   // profile. orders.service.ts checkout() enforces this as required when the

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SHARE_SAVE_REFUND_RATE } from './marketing.constants';
+import { LEGACY_FINANCE_REPORT, legacyLedgerWhere } from '../finances/finance-reporting-scope';
 
 const SHOP_URL = process.env['CLIENT_URL'] ?? 'https://ezihubb.com';
 
@@ -24,13 +25,14 @@ export class ShareSaveService {
         where: { storeId, kind: 'SHARE_SAVE', convertedAt: { gte: thirtyDaysAgo } },
       }),
       this.prisma.sellerLedgerEntry.aggregate({
-        where: { storeId, type: 'SHARE_SAVE_REFUND', createdAt: { gte: thirtyDaysAgo } },
+        where: legacyLedgerWhere({ storeId, type: 'SHARE_SAVE_REFUND', createdAt: { gte: thirtyDaysAgo } }),
         _sum: { amount: true },
       }),
     ]);
 
     return {
       enabled:      store.shareSaveEnabled,
+      financeReporting: LEGACY_FINANCE_REPORT,
       joinedAt:     store.shareSaveJoinedAt,
       // No single "the" link — each buyer gets their own personalized
       // `?ss=<their user id>` link from the Share & Save widget on your shop

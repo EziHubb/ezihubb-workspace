@@ -1,5 +1,5 @@
 import { Prisma, PrismaClient } from '@prisma/client';
-import { consumeHeldInventory, releaseEconomicInventory, reserveEconomicInventory } from './inventory-reservation';
+import { consumeCapturedInventory, consumeHeldInventory, releaseEconomicInventory, reserveEconomicInventory } from './inventory-reservation';
 import { ECONOMIC_POLICY_VERSION } from '../finances/economic-policy';
 
 const now = new Date('2026-10-03T00:00:00Z');
@@ -15,6 +15,10 @@ const reservation = { id: 'reservation1', contextId: 'context1', productId: 'pro
 
 function harness() {
   const tx = {
+    $queryRaw: jest.fn().mockResolvedValue([]),
+    economicCapture: { findUniqueOrThrow: jest.fn().mockResolvedValue({ id: 'capture', contextId: context.id,
+      context: { ...context, order: { status: 'PENDING_PAYMENT', adminArchivedAt: null } } }) },
+    economicInventoryReacquisition: { create: jest.fn().mockResolvedValue({ id: 'reacquisition' }) },
     economicOrderContext: { findUniqueOrThrow: jest.fn().mockResolvedValue(context) },
     economicInventoryReservation: {
       findMany: jest.fn().mockResolvedValue([reservation]),
@@ -30,6 +34,31 @@ function harness() {
 }
 
 describe('dormant inventory reservation DB contracts (not real contention)', () => {
+  it('reacquires the original released pool without extending or resetting the reservation', async () => {
+    const h=harness();
+    h.tx.economicInventoryReservation.findMany.mockResolvedValue([{...reservation,state:'EXPIRED',reacquisition:null}] as never);
+    await consumeCapturedInventory(h.transaction,'capture',new Date(now.getTime()+900_001));
+    expect(h.tx.product.updateMany).toHaveBeenCalledWith({where:{id:product.id,quantity:{gte:5}},data:{quantity:{decrement:5}}});
+    expect(h.tx.economicInventoryReservation.updateMany).not.toHaveBeenCalled();
+    expect(h.tx.economicInventoryReacquisition.create).toHaveBeenCalledWith({data:{reservationId:reservation.id,captureId:'capture',quantity:5}});
+    h.tx.economicInventoryReservation.findMany.mockResolvedValue([{...reservation,state:'EXPIRED',reacquisition:{captureId:'capture'}}] as never);
+    h.tx.product.updateMany.mockClear();h.tx.economicInventoryReacquisition.create.mockClear();
+    await consumeCapturedInventory(h.transaction,'capture');
+    expect(h.tx.product.updateMany).not.toHaveBeenCalled();expect(h.tx.economicInventoryReacquisition.create).not.toHaveBeenCalled();
+  });
+  it('blocks late capture without stock, cancelled orders, foreign proof and missing reservations',async()=>{
+    const h=harness();
+    h.tx.economicInventoryReservation.findMany.mockResolvedValue([{...reservation,state:'RELEASED',reacquisition:null}] as never);
+    h.tx.product.updateMany.mockResolvedValue({count:0});
+    await expect(consumeCapturedInventory(h.transaction,'capture')).rejects.toThrow('stock unavailable');
+    expect(h.tx.economicInventoryReacquisition.create).not.toHaveBeenCalled();
+    h.tx.economicInventoryReservation.findMany.mockResolvedValue([{...reservation,state:'RELEASED',reacquisition:{captureId:'foreign'}}] as never);
+    await expect(consumeCapturedInventory(h.transaction,'capture')).rejects.toThrow('Foreign');
+    h.tx.economicInventoryReservation.findMany.mockResolvedValue([]);
+    await expect(consumeCapturedInventory(h.transaction,'capture')).rejects.toThrow('no inventory reservation');
+    h.tx.economicCapture.findUniqueOrThrow.mockResolvedValue({id:'capture',contextId:context.id,context:{...context,order:{status:'CANCELLED',adminArchivedAt:null}}});
+    await expect(consumeCapturedInventory(h.transaction,'capture')).rejects.toThrow('reconciliation before fulfillment');
+  });
   it('reserves the complete shared-pool quantity once with a finite-stock predicate and default TTL', async () => {
     const h = harness();
     h.tx.economicInventoryReservation.findMany.mockResolvedValueOnce([]);

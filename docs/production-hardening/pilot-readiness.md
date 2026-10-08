@@ -1,4 +1,27 @@
-# Pilot readiness — updated 2026-10-06
+# Pilot readiness — updated 2026-10-08
+
+## Current assessment (supersedes the historical matrix below)
+
+Verdict remains **NOT READY / NO-GO**. M4 is CLOSED for local implementation:
+refund/debt/reconciliation, coordinated finance readers, lifecycle/inventory,
+durable workers and bounded external-effect recovery are implemented/tested
+locally. The older matrix below describes the 2026-10-06 state, not current gaps.
+See [M4 closeout](m4-closeout.md) for exact implementation acceptance.
+
+| Milestone | Actual current status |
+|---|---|
+| M5.1 / M5.2 | Native acceptance BLOCKED: runtime/Docker/private manifest/current-source native reports missing; contract PASS is not native proof |
+| M5.3 | Local synthetic HTTPS and read-only binding preflight implemented; real AppModule/browser/mailbox/provider drivers still missing |
+| M5.4 | Eight-case local native harness implemented but not executed here; deployed worker/proxy/alert and whole-system restore still missing |
+| M5.5 | Dossier/check, runbook proposal and ten-target code-regression driver implemented; full execution not run, real browser/external acceptance writers and separate owner authorization still missing |
+
+No external migration, deployment, live provider or numerical whole-system
+RPO/RTO was verified. Flags remain unactivated. Unsupported/personalized automated
+POD is manual UNKNOWN; SMTP acceptance is not inbox delivery. See
+[M5.5 fixed acceptance matrix/runbook](m5-release.md) for remaining work. Unknown
+or preflight PASS booleans cannot close external acceptance gates.
+
+## Historical assessment — 2026-10-06, not current implementation status
 
 ## Verdict: NOT READY
 

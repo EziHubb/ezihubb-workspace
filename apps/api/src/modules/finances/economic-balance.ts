@@ -52,15 +52,17 @@ export async function readEconomicBalance(tx: Prisma.TransactionClient, scope: E
   const account = await accountForScope(tx, scope);
   const lots = account ? await tx.economicBalanceLot.findMany({
     where: { accountId: account.id }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-    include: { capture: { include: { context: { include: { operations: { where: { kind: 'REFUND', state: { not: 'FAILED' } } }, order: { include: { storeOrders: true, payment: true } } } } } } },
+    include: { capture: { include: { context: { include: { operations: { where: { kind: 'REFUND', state: { notIn: ['FAILED', 'SUCCEEDED'] } } }, order: { include: { storeOrders: true, payment: true } } } } } } },
   }) : [];
-  let pending = 0n, held = 0n, available = 0n, reserved = 0n, paid = 0n, captured = 0n;
+  let pending = 0n, held = 0n, available = 0n, reserved = 0n, paid = 0n, captured = 0n, reversed = 0n, debtRecovered = 0n;
   const eligible: Array<{ id: string; free: bigint }> = [];
   for (const lot of lots) {
     captured += lot.amountMinor; reserved += lot.reservedMinor; paid += lot.paidMinor;
-    const free = lot.amountMinor - lot.reservedMinor - lot.paidMinor;
+    reversed += lot.reversedMinor ?? 0n; debtRecovered += lot.debtRecoveredMinor ?? 0n;
+    const remainder = lot.amountMinor - lot.reservedMinor - lot.paidMinor - (lot.reversedMinor ?? 0n) - (lot.debtRecoveredMinor ?? 0n);
+    const free = remainder > 0n ? remainder : 0n;
     const order = lot.capture.context.order;
-    const unsafe = !!order.adminArchivedAt || ['CANCELLED', 'REFUND_REQUESTED', 'REFUNDED', 'DISPUTED'].includes(order.status)
+    const unsafe = !!order.adminArchivedAt || ['PENDING_PAYMENT', 'CANCELLED', 'REFUND_REQUESTED', 'REFUNDED', 'DISPUTED'].includes(order.status)
       || order.payment?.status !== 'PAID' || lot.capture.context.operations.length > 0
       || order.storeOrders.some(shop => (scope.kind === 'AFFILIATE' || shop.storeId === scope.beneficiaryId)
         && ['CANCELLED', 'REFUND_REQUESTED', 'REFUNDED', 'DISPUTED'].includes(shop.status));
@@ -79,13 +81,34 @@ export async function readEconomicBalance(tx: Prisma.TransactionClient, scope: E
   }
   const debt = account?.debtMinor ?? 0n;
   available = available > debt ? available - debt : 0n;
-  return { account, eligible, captured, available, pending, held, reserved, paid, debt };
+  return { account, eligible, captured, available, pending, held, reserved, paid, debt, reversed, debtRecovered };
 }
 
 export function economicBalanceDto(balance: Awaited<ReturnType<typeof readEconomicBalance>>, scope: EconomicScope) {
   return { version: 'economic-v1' as const, ...scope, minorExponent: balance.account?.minorExponent ?? 2,
     capturedMinor: balance.captured.toString(), availableMinor: balance.available.toString(), pendingMinor: balance.pending.toString(),
-    heldMinor: balance.held.toString(), reservedMinor: balance.reserved.toString(), paidMinor: balance.paid.toString(), debtMinor: balance.debt.toString() };
+    heldMinor: balance.held.toString(), reservedMinor: balance.reserved.toString(), paidMinor: balance.paid.toString(), debtMinor: balance.debt.toString(),
+    reversedMinor: balance.reversed.toString(), debtRecoveredMinor: balance.debtRecovered.toString() };
+}
+
+/** Account lock + exact audit debits; retries cannot collect the same debt twice.
+ * Only currently eligible, unreserved funds in the identical scope are used. */
+export async function recoverEconomicDebt(tx: Prisma.TransactionClient, scope: EconomicScope, actorId: string) {
+  requireIdentifier(actorId);
+  const account = await accountForScope(tx, scope, true);
+  if (!account || account.debtMinor === 0n) return 0n;
+  const balance = await readEconomicBalance(tx, scope);
+  let remainder = account.debtMinor;
+  for (const lot of balance.eligible) {
+    if (remainder === 0n) break;
+    const take = lot.free < remainder ? lot.free : remainder;
+    if (take === 0n) continue;
+    await tx.economicDebtRecovery.create({ data: { lotId: lot.id, amountMinor: take, recoveredBy: actorId } });
+    await tx.economicBalanceLot.update({ where: { id: lot.id }, data: { debtRecoveredMinor: { increment: take } } });
+    await tx.economicBalanceAccount.update({ where: { id: account.id }, data: { debtMinor: { decrement: take } } });
+    remainder -= take;
+  }
+  return account.debtMinor - remainder;
 }
 
 function requireIdentifier(value: string, max = 150) {
@@ -107,6 +130,7 @@ export async function reserveEconomicPayout(db: Database, input: {
       if (prior.amountMinor !== amount || prior.destination !== input.destination || prior.requestedBy !== input.actorId) throw new ConflictException('Payout key reused with different details');
       return prior;
     }
+    await recoverEconomicDebt(tx, input.scope, input.actorId);
     const balance = await readEconomicBalance(tx, input.scope);
     if (amount > balance.available) throw new BadRequestException('Requested payout exceeds captured eligible funds');
     const payout = await tx.economicPayout.create({ data: { accountId: account.id, amountMinor: amount,

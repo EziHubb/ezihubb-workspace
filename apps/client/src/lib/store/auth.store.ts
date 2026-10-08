@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import { safeLocalStorage } from '../safe-local-storage';
 import { signOut } from 'next-auth/react';
 import { setTokenGetter, setTokenUpdater, api } from '@ezihubb/api-client';
 import { apiClient } from '@ezihubb/api-client';
@@ -239,6 +240,7 @@ export const useAuthStore = create<AuthStore>()(
 
     {
       name: 'ezihubb-auth',
+      storage: createJSONStorage(() => safeLocalStorage),
       // Only persist the user profile. accessToken and isAuthReady reset on every load.
       partialize: (state) => ({ user: state.user }),
     },

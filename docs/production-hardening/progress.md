@@ -1,5 +1,184 @@
-Current phase: E — M3 checkout/capture/balance/payout integration (updated 2026-10-06)
+Current phase: E — M4 CLOSED locally; M5.1/M5.2 native acceptance BLOCKED; M5.3/M5.4 incomplete; M5.5 dossier tooling implemented, release NO-GO (updated 2026-10-08)
+
+## M5 code-regression execution driver — 2026-10-08 continuation
+
+- Owner asked to continue completing M5. Added a fixed executable ten-target
+  runner: original API/admin/client lint, production build, typecheck and full
+  unfiltered API Jest with coverage. No target/filter skip input; current-source
+  fingerprint and original resolved lint budgets/executors are enforced.
+- Fresh owned Linux/Node-baseline runner only; private env autoload is refused,
+  provider credentials cleared, native endpoints invalid and economic gates off.
+  Owned 503 fixture permits static build fallback without posing as native API.
+  Node egress policy blocks provider/infra calls and records sanitized denials;
+  it is not an OS sandbox or provider/full-stack acceptance claim.
+- Guarded manual CI workflow added, not dispatched. Private logs/Jest detail are
+  not uploaded. M5.5 now validates actual exact-candidate code regression reports;
+  this can pass only the code gate, never browser/provider/restore/owner gates.
+- Full execution remains NOT RUN/BLOCKED locally. Missing runtime/environment
+  and original M5.3/M5.4 driver work are still outstanding, not reclassified PASS.
+  See [m5-code-regression.md](m5-code-regression.md). No commit/push/deploy.
+- Verification: runner contracts **12/12**, release contracts **23/23** and
+  related harness contracts **39/39 + 10/10 + 18/18 + 16/16** PASS, uncached
+  (**118 checks**, not the full API suite). M5 lint zero errors/warnings and
+  M5 typecheck PASS. Full filesystem API test inventory must match executed Jest
+  suites exactly; root Jest configuration participates in the candidate hash.
+  Doctor BLOCKED before starting targets (Node baseline/private env; Windows
+  unsupported). Private env files were preserved, not read or removed.
+
+## M5.5 acceptance dossier — 2026-10-08
+
+- Owner requested M5.5 continuation. Added read-only JSON/Markdown collection
+  and strict `api:m5-release-check`, with fixed native/external/regression/owner
+  gates. Generation success is not acceptance; strict check fails NO_GO.
+- Fingerprint covers API/admin/client/shared/migrations/ops and docs, excluding
+  private/local/generated files. Native proof keeps its narrower source/migration
+  manifest and exact parent run links. Latest failure blocks older PASS.
+- Missing/stale/invalid, contradictory steps, unknown full-stack report versions,
+  doctor results and preflight booleans cannot authorize release. Raw fields are
+  not copied to sanitized output; local reports remain unsigned diagnostics.
+- Manual isolated CI collects a dossier, not deployment permission. Added
+  coordinated rollout/rollback proposal and corrected stale readiness assessment
+  to reflect M4 closeout while retaining NOT READY.
+- Verification: M5.5 contracts **20/20** PASS (3.694 s); related foundation,
+  contention, sandbox and recovery harness contracts **39/39 + 10/10 + 18/18 +
+  16/16** PASS, uncached. These are offline/WASM/IPC/controller/model checks,
+  not native/full-stack acceptance. M5 lint **0 warnings / 0 errors** and
+  typecheck PASS. Collector writes a **NO_GO** dossier (exit 0 for collection);
+  strict check correctly exits **1**, with Node baseline BLOCKED, native
+  foundation/recovery MISSING, contention STALE and six final gates NOT_VERIFIED.
+- Native evidence, real M5.3/staging/whole-system recovery drivers, final
+  candidate-wide regressions and separate authorization remain outstanding.
+  M5.5 acceptance and M5 are **not closed**. No deploy/activation.
+  See [m5-release.md](m5-release.md) for the fixed remaining acceptance matrix.
+
+## M5.4 local recovery implementation — 2026-10-08
+
+- Owner explicitly requested M5.4 while M5.3 remains incomplete. Prepared eight
+  fixed native local cases: capture/lifecycle kills before/after commit, real lease
+  expiry/stale ACK, synthetic ambiguous external create, Redis outage/replay and
+  native PostgreSQL snapshot restore into a fresh owned destination.
+- Strict identity/provenance/container checks, current-source native M5.1/M5.2
+  evidence, read-only fixture revalidation, exclusive parent lock through cleanup,
+  nonce/PID/resource IPC barriers, bounded commands, sanitized reports and retained
+  private synthetic backup. No production process/DB/provider operation or deletion.
+- Readiness/independent alert witness uses a local HTTP adapter/proxy around the
+  production method, not deployed AppModule/proxy/alert provider. Redis delivery
+  uses scoped real LIST commands, not BullMQ worker integration. Public PostgreSQL
+  backup-only RPO exposes a post-snapshot acknowledged write; service RTO stays null.
+- Final uncached contract/IPC/HTTP checks **16/16** PASS (11.921 s); M5.1/M5.2
+  harness regressions **39/39 + 10/10** PASS, not native acceptance. M5 lint
+  **0 warnings / 0 errors**, typecheck and `git diff --check` PASS. Native recovery
+  remains BLOCKED (Node **24.14.0**, no Docker/private manifest or current-source
+  completed native M5.1/M5.2 reports); no numerical RPO/RTO result claimed.
+  See [m5-recovery.md](m5-recovery.md) for scope and remaining acceptance. Local code
+  preparation does not close M5.3/M5.4 or authorize release. No commit/push/deploy.
+
+## M5.3 HTTPS/sandbox checkpoint — 2026-10-08
+
+- Added real loopback HTTPS/controller/Passport/JWT/session/RBAC/CSRF/raw Stripe
+  signature contracts, including separately authenticated platform gift-wrap and
+  shipping approvals. Storage, refresh rotation and financial handlers remain
+  synthetic; no native full-stack/browser/provider acceptance claim.
+- Shared production/test CORS options with preserved policy and added guarded,
+  read-only Stripe TEST/PayPal sandbox binding preflight. Separate private manifest,
+  exact callback/account IDs, official endpoint allowlist and completed source-bound
+  native M5.1/M5.2 reports are required before any external reads. No app activation.
+- Doctor correctly reports missing runtime baseline, native evidence and sandbox
+  manifest. See [m5-https-sandbox.md](m5-https-sandbox.md) for the fixed remaining
+  acceptance matrix. AppModule/native auth, real mailbox, browser and actual
+  provider callback/settlement drivers are still unimplemented/unverified here;
+  M5.3 is NOT complete. No commit/push/deploy/provider operation.
+- Final uncached verification: full API **90 suites / 889 tests** PASS
+  (1168.039 s), includes the new **34 HTTPS contracts**. Separate sandbox guard
+  tests **18/18**, M5.1/M5.2 harness regressions **39/39 + 10/10** PASS; not native
+  acceptance. API production build, API/M5 typecheck and lint PASS; API lint
+  **175 warnings / 0 errors**, unchanged budget. `git diff --check` PASS.
+- At this earlier checkpoint, owner requested continuation to M5.4 after M5.3 completion. Keep the acceptance gate:
+  missing full-stack/mailbox/browser/provider work and sandbox/environment
+  authority are not bypassed by these passing local tests. The later explicit M5.4
+  implementation request is recorded above; it does not close either milestone.
+
+## M5.2 native contention harness — 2026-10-08
+
+- User authorized “triển khai M5.2”. This explicitly puts isolated synthetic
+  native contention back in scope after the earlier skip. It does not authorize
+  provider/sandbox operations, production gates, migrations or deployment.
+- Added `api:m5-contention`, 23 fixed business scenarios using the actual
+  Prisma transaction functions. Fifteen contention scenarios rendezvous on two
+  distinct backend PIDs before effects; first-attempt synchronization does not
+  serialize transactions or override production retry rules.
+- A third owned database `ezihubb_m5_scenarios` keeps all scenario effects apart
+  from foundation migration/upgrade fixtures. Fresh scenarios append unique
+  synthetic records; no reset, deletion, old fixture overwrite or fake balance
+  credit. Test-only pending event scheduling containment preserves evidence
+  without claiming publication. Failed scenarios stop the run for inspection.
+- Requires matching completed native M5.1 evidence, complete source/migration
+  fingerprints and read-only foundation fixture revalidation. Partial/old reports
+  or absent independent-session evidence cannot set `contentionVerified: true`.
+- Corrected the M5.1 PostgreSQL receipt query's argument from a scalar string
+  to the driver's required parameter array, found during M5.2 review.
+- Verification: M5.2 harness **10/10**, M5.1 **39/39**, targeted API regression
+  **36 suites / 357 tests** PASS (156.232s), uncached; M5 typecheck/lint PASS
+  with zero warnings. The first targeted run could not compile the finance
+  access suite because isolated test types omitted Passport's `Request.user`
+  augmentation; added the installed `passport` type to the test config and
+  reran successfully without disabling diagnostics/assertions. No application
+  auth logic changed. These are local modeled/SQL/HTTP tests, not native proof.
+- Local harness tests, M5.1 regression and typecheck/lint evidence are recorded
+  in `m5-contention.md`. Native scenarios remain **NOT RUN/BLOCKED**: Node
+  24.14.0 is below the required 24.15.0, Docker is absent, and native M5.1
+  acceptance is still missing. No pass/closure or paid-pilot readiness claim.
+- The explicit hosted workflow now orders foundation verification before
+  contention, but has not been committed, pushed, invoked or passed here.
+  See `m5-contention.md` for the exact matrix, prerequisites and limits.
 Status: Owner approved recommended options A in D001–D004. Implement identity/session boundaries first, then finance/allocation, durable operations and truthful contracts in dependency order. Approval is not production rollout or permission to rewrite historical money records. Paid-pilot mission is NOT complete.
+
+## M5.1 isolated foundation — 2026-10-08
+
+- User authorized “Triển khai M5.1”. Added a separate digest-pinned, loopback-only
+  internal-network infrastructure stack and guarded Nx init/doctor/up/stop/verify
+  targets. No production compose/deploy script or provider credentials are used.
+- Native harness checks actual Docker context/rendered config/running container
+  identity and protected DB nonce/nonprivileged role before migration. It prepares
+  fresh full history and pre-M4 synthetic-fixture upgrade paths, original migration
+  checksums, no-op redeploy, fixture replay and Prisma schema diff. No reset/drop.
+- Synthetic fixtures cover tenant roles, product/variant/shared/unlimited/digital
+  stock and uncollected multi-shop/guest identity. Password is generated privately;
+  no available balance/capture/provider connection is seeded. Reports contain
+  source checksums, outcomes and IDs/hash, no credentials or raw driver replies.
+- Full SQL history smoke executed all **31 migrations in PGlite**. This is NOT
+  native PostgreSQL/Prisma contention proof. Unit fixture validation is model-shaped,
+  not a completed native seed. M5 lint/typecheck and existing API typecheck PASS.
+- `api:m5-doctor` correctly reports BLOCKED: Node 24.14.0 below minimum 24.15.0,
+  Docker executable/daemon absent and private manifest not initialized. Native
+  verification, hosted workflow, HTTPS/provider and recovery tests NOT RUN.
+- See [m5-foundation.md](m5-foundation.md) for measured final test counts, exact
+  commands and evidence limits. Repository preparation does not close M5.1 native
+  acceptance. No commit/push/deploy, external migration, historical mutation,
+  provider operation or economic activation. M5.2 and the prior concurrency skip
+  are not silently advanced/revoked by this implementation.
+
+## Authoritative M4 closeout — 2026-10-08
+
+- [m4-closeout.md](m4-closeout.md) reconciles the original approved scope, records
+  the acceptance matrix and supersedes the historical open-M4 statements below.
+- The final real gap was separately approved shipping exceptions: completed API,
+  durable intent, cumulative original-money allocations, independent SQL guards,
+  authenticated audit identity and two-stage admin UI. No new owner policy was
+  required; the earlier “awaiting policy” statement was incorrect.
+- Final uncached checks: full API **89 suites / 855 tests**, final overlapping
+  focused follow-up **7 suites / 84 tests**, admin browser **36/36**, client browser
+  **44/44** PASS. SQL wrappers executed **40 migration cases + 7 reader cases**,
+  not counted twice. All three applications passed typecheck, lint and production
+  builds; lint **0 errors**, warnings **175/549/227**, thresholds unchanged.
+- No remaining repository implementation actions in the approved M4 scope.
+  Unsupported artwork/provider/tax/goodwill contracts remain explicitly
+  manual/UNKNOWN or blocked, not fictitiously implemented.
+- M5 retains a fixed list: owner-SKIPPED multi-session PostgreSQL; unperformed
+  provider sandbox/networked recovery, HTTPS/mailbox and staging failure/restore
+  drills; runtime baseline and separately approved coordinated migration/release.
+  Local mocked/PGlite tests do not satisfy those gates. Paid-pilot readiness is
+  NOT complete. No commit, deploy, external migration, backfill or gate activation.
 
 Completed:
 - Read all six existing audit documents; checked dirty worktree and resolved Nx API targets.
@@ -8,7 +187,14 @@ Completed:
 - Implemented local access, provider-failure, diagnostic redaction, affiliate conditional transitions, filtered-search and quantity-arithmetic patches.
 - Created D001–D004 decision documents, recovery/reconciliation runbook, final-re-audit and pilot-readiness reports; added dated notices to all six earlier audit documents.
 
-In progress:
+Historical implementation checkpoints (superseded by the closeout above):
+- Latest M4 historical shop-statistics extension (2026-10-08): repaired the multi-shop parent-total leak and unclassified Redis monetary chart. Overview/daily revenue use one shared scoped DB aggregate; all versioned contexts are excluded, archiving preserves financial history, buyer-paid shipping excludes platform support and summary/chart boundaries match. Listing detail now checks original item/shop ownership with resolved store context, not current product ownership alone. Monetary results remain LEGACY_UNKNOWN, not capture/profit/available cash; traffic is separately calendar-counter based. Latest full API **89 suites / 850 tests**, focused **3 suites / 24 tests**, API typecheck/lint/build pass; lint **175 warnings / 0 errors**, unchanged budget. The **38 migration SQL cases** and **7 new reader SQL cases** execute inside two wrappers and are not double-counted. No UI change, migration, policy change, provider write, activation or deployment. M4 remains IN PROGRESS, artwork source/approval owner choice still open.
+- Latest M4 shop earnings extension (2026-10-08): found and replaced the remaining per-order legacy-only Earnings reader for versioned contexts. Shop ownership/original quote/capture allocations/settled refund journals/seller lots are read in one snapshot; prepared refunds remain pending and other shops/order-level tax remain outside the response. UI uses exact minor-unit strings, explicit LIVE/TEST/LEGACY_UNKNOWN labels, malformed/foreign evidence hiding and actor/context/role/own-shop/session-status scoped cache. Neither paid status nor an empty ledger proves capture, profit or available cash. Full API **87 suites / 827 tests**, admin browser **34/34** plus final cache follow-up **4/4**, typecheck/lint and API/admin production builds pass. No financial mutation, new migration or deploy. Artwork source/approval contract is awaiting owner choice; unsupported providers, verified production/shipment/cost, tax/override policies and external activation verification remain open.
+- Latest M4 shipping/external/reporting extension (2026-10-08), superseding the earlier checkpoints below: full-shop pre-handoff customer shipping refunds now have original-quantity and API/SQL handoff guards, including prepared/unknown POD intents. Durable default-off Printify creation/original-resource recovery, independent versioned notification receipts and one-claim SMTP acceptance are integrated with platform-only audit/confirmation/reconciliation UI. TEST never sends to live providers/buyers; SMTP acceptance is not inbox delivery, POD creation is not production/shipment. Historical ledger/dashboard/marketing readers use central exclusion and clear LEGACY_UNKNOWN labels; downstream receipts are separately mode-scoped. Personalized artwork, unsupported POD providers, verified production/shipment/actual costs, tax/override policies and external verification remain open. M4 is NOT fully complete or activated. Full API regression passes **85 suites / 808 tests**, admin browser **30/30**, API/admin typechecks and lint **0 errors** with unchanged warning counts **177/549**. See `m4-implementation.md`. No commit, deploy, external migration, activation or provider operation.
+- M4 checkout continuation (2026-10-08): prospective immutable create-request receipts, scoped timeout lookup, same-key/body explicit retry and cart-lock revalidation are implemented locally. Opaque session-cookie fallback, shared auth/cart/chat storage resilience, conservative consent/currency fallback and credential-free public capabilities cover checkout storage failures without enabling payments. Frozen online orders remain read-only when payments are off. Migration must precede coordinated API/client rollout; old callers missing the now-required key are rejected. Full-reload unknown requests with no committed receipt/body, lost guest cookies or changed identity fail closed for support. Shipping/tax refund integration, external versioned POD/notifications and historical reader labels remain open. This checkout slice does not complete M4 or authorize production migration/deploy/backfill.
+- Current M4 extension (2026-10-08): verified original-reference refund settlement/journal/rounding and debt recovery, versioned inventory/dispatcher, payer-authorized full-reload checkout recovery, LIVE/TEST summary and legacy-reader exclusion, and audited DEAD DB lifecycle recovery are implemented locally. Shared transaction-time fulfillment gates cover seller/platform status and dispatch, progress moves and step rehoming; closed/held/unverified orders fail closed. Owner-approved gift-wrap refunds require separate platform SUPER_ADMIN approval, authenticated actor and reason frozen in the plan; cancellation never automatically refunds this fee. HTTP/SQL enforce original caps and audit identity, merchandise hashes are unchanged, and reload retains approval without auto-executing. External versioned POD/notifications, shipping/tax refund integration, full historical label alignment and checkout storage/creation-timeout edges remain open; M4 is NOT complete. Full API **76 suites / 729 tests**, **31 isolated PGlite SQL cases** (not counted twice), admin browser **24/24**, checkout/locale browser **12/12** pass. API/admin typecheck/lint pass, original warning counts **177/549**; final production builds pass (API 35.693s; admin compile 11.1s / 59 pages). Synthetic API/session fixtures only, generated next-env unchanged. See `m4-implementation.md`. No deployment, activation, external migration or backfill. PostgreSQL multi-session remains SKIPPED at owner request.
+- Owner approved the recommended separate signed platform rounding journal on 2026-10-08 (latest “duyệt”). Original quantity-refund plans now include immutable planned journal rows and exact signed rounding; application and SQL recompute from original allocations, including original affiliate residual ownership. Platform reconciliation labels the adjustment as planned, not booked spend or refund proof. This preparation slice does not implement evidenced settlement/debt. Multi-session PostgreSQL checks are **SKIPPED at the owner's request**, not passed; no isolated connection is requested for this iteration. No production activation, external migration or deployment.
+- M4 local checkpoint: deferred checkout provider choice; immutable original-allocation refund preparation (not dispatch/settlement); platform-only read-only reconciliation API and admin UI. See `m4-implementation.md` for exact evidence, remaining work and rounding/isolated-PostgreSQL decisions. No new deployment, external migration or economic activation. M4 and paid-pilot readiness are NOT complete. Earlier entries below retain their dated historical scope.
 - M3 continuation is now registered behind rollout controls: authoritative checkout quote, durable Stripe/PayPal creation, verified capture/balance lots, beneficiary-scoped APIs and exact payout allocation/evidence settlement. Admin/affiliate payout UI uses captured balances; five legacy HTTP payout writes are retired and historical reads retained. No flag was enabled. Normal checkout provider choice and actual DB concurrency verification remain incomplete; M3 is NOT marked complete. See economic-balance-payout-contract.md for exact implemented and open boundaries. External DB/provider operations remain unperformed.
 - D001 E1 implemented locally: strict Redis security counters, transactional single-use refresh rotation, Google/password MFA parity for all roles, one-use challenges, coordinated storefront form and server-verified NextAuth identity.
 - E2 guest messaging implemented locally: email proof with bounded attempts/TTL, hashed HttpOnly session capability, central mailbox/owner authorization, guest inbox and composer verification, guest reply email destination and read receipts. Mocked browser and API regression checks pass; no full D001 completion claimed.
@@ -31,6 +217,14 @@ Plan changes:
 - Fixed pure quantity arithmetic in listing/product totals without changing fee policy or historical financial records; parent-order shop attribution still open.
 
 Tests:
+- M4 historical shop-statistics checkpoint PASS (2026-10-08): final stable-source full API **89 suites / 850 Jest tests**, 56.115s, uncached Nx. Focused **3 suites / 24 tests**, 22.814s; one new wrapper executes **7 actual revenue-reader SQL cases** on minimal synthetic PGlite tables, separate from the existing **38 migration SQL cases**, neither counted twice. Includes multi-shop original scope/shipping support, LIVE/TEST exclusion, archived/cancelled/refunded and unpaid receipts, UTC window consistency, injection resistance, Redis/DB failure isolation and original item/controller ownership. Earlier BigInt/key fixture errors and the overlapping full run's stale TypeScript signatures are not passing checkpoints. Final API typecheck/lint/build pass, webpack **41.606s**, **175 warnings / 0 errors**, no budget change; diff check passes and generated next-env has no change. Browser evidence below is historical, not rerun for this backend-only slice. Node engine mismatch, owner-SKIPPED multi-session PG and remaining activation/artwork boundaries persist; no deploy or external write.
+- M4 shop Earnings checkpoint PASS (2026-10-08): full API **87 suites / 827 tests**, 125.712s, including the existing single wrapper with **38 isolated PGlite SQL cases**, not double-counted. Admin browser **34/34**, desktop/mobile, 2.2m, and final role/session/own-shop cache follow-up **4/4**, 50.4s. Synthetic sessions/API/provider responses only; screenshots reviewed and large-money no-overflow assertion retained. Incorrect queue fixture route and hidden-tab ambiguous selector were fixed, interrupted/failed runs not counted as pass. API/admin typecheck/lint **0 errors**, warnings unchanged **177/549**. Final builds PASS: API webpack **48.472s**; admin compile **13.1s** / TypeScript **13.0s**, **59 pages**, synthetic API URLs. No new migration; next-env restored and diff check passes. Client's prior **24/24** is retained, not rerun. No external write or activation; remaining gates in `m4-implementation.md`.
+- M4 shipping/external/reporting regression PASS (2026-10-08): full API **85 suites / 808 tests**, 159.453s, including one wrapper executing **38 isolated PGlite SQL cases**, not double-counted. Admin browser **30/30**, desktop/mobile, 1.7m, with synthetic sessions/API/provider responses and real external writes blocked. API/admin typecheck/lint pass, **177/549 warnings**, **0 errors**, no relaxed budgets. Prisma validate/generate use an unreachable synthetic DSN; no external migration. Latest-source production-build results are recorded in `m4-implementation.md`. Client's previous checkout/locale **24/24** remains historical evidence, not rerun in this extension. Multi-session PostgreSQL is owner-SKIPPED; provider sandbox and M5 staging/restore remain unverified.
+- M4 checkout continuation PASS (2026-10-08): full API **79 suites / 763 Jest tests**, 123.176s, including one wrapper with **34 isolated PGlite SQL cases**, not double-counted. Checkout/locale browser **24/24**, desktop/mobile, 1.7m, including blocked storage, explicit consent rejection retained after reload, lost creation response and explicit identical-key/body replay. API/client/shared API-client typechecks pass; lint zero errors, unchanged API **177** / client **227** warning counts, shared API-client clean. Final API/client builds pass through uncached Nx plus four shared builds (API 43.024s; client compile 8.7s / TypeScript 12.3s). Prisma validate/generate use an unreachable synthetic local DSN. Browser/compiler fixture failures were corrected and interrupted stale runs not counted. Synthetic evidence only; no deployment, provider operation, external migration or backfill. Multi-session PostgreSQL remains owner-SKIPPED. Details and deliberate fail-closed recovery limits in `m4-implementation.md`.
+- M4 signed-rounding final compile/lint checkpoint PASS (2026-10-08): `pnpm nx run-many -t typecheck lint build -p api admin --parallel=1 --skipNxCache`, including three shared dependency builds. API webpack 45.254s; admin compile 16.7s / 59 static pages. API 177 / admin 549 warnings, 0 errors, budgets unchanged. Initial fixture non-null assertion warning removed by retaining explicit presence assertions, not relaxing lint. Synthetic `.test` API URLs only, generated next-env unchanged. Prisma validate/generate use an unreachable synthetic local DSN; no external migration. `git diff --check` PASS. Node engine warning remains; no upgrade or deployment.
+- M4 signed-rounding regression PASS (2026-10-08): full API **66 suites / 622 Jest tests**, 61.021s; one wrapper executes **25 isolated PGlite SQL cases**, not counted again. Includes positive/negative bounded rounding, exact original totals, immutable draft journals, numeric-JSON rejection, balanced journal forgery, original multi-shop affiliate residuals and high-value precision. Synthetic SUCCEEDED operations only model prior history, not evidenced refund booking. Admin browser **14/14**, 1.4m, desktop/mobile, including exact signed planned rounding and malformed-response hiding. No external PostgreSQL, provider or production operation; multi-session PostgreSQL explicitly SKIPPED at owner request.
+- M4 local builds PASS (2026-10-08): API, client and admin via their Nx build targets with cache disabled. Client/admin used synthetic API URLs, so this proves compilation, not production API or authentication configuration. No generated next-env changes retained. Node engine warning (24.14.0 versus minimum 24.15.0) remains; no runtime upgrade or deployment performed.
+- M4 checkpoint PASS (2026-10-08): full API **66 suites / 617 Jest tests**, 129.323s (including one wrapper containing 20 PGlite SQL cases, not counted again); admin browser **12/12**, 51.0s; checkout provider-choice browser **4/4**, 1.5m; API/admin/client typecheck and lint **0 errors**, unchanged warning counts 177/549/227. Tests use isolated synthetic inputs, not provider sandbox or multi-session PostgreSQL. Initial reconciliation unit-test import and browser redirect expectation were corrected without weakening permission or financial assertions. See `m4-implementation.md` for open integration/activation gates.
 - Latest production builds PASS (2026-10-06): `pnpm nx run-many -t build -p api admin client --parallel=1 --skipNxCache`, plus four shared dependency builds. The terminal session expired before its output was retrieved; read-only Nx task history independently records `success`, code 0 for API hash `7498400014392143312`, client `2979114728928210119`, admin `16799267588878219656`. Matching terminal logs confirm API webpack 40.378s; client compile 16.3s / TypeScript 24.0s / 142 pages; admin compile 20.4s / TypeScript 19.8s / 59 pages. Both API URL environment variables were synthetic `.test`: client review/sitemap sections could not fetch and remained empty, not production-data proof. Build artifacts are local verification only, not release artifacts. Node 24.14.0 remains below the declared 24.15.0 minimum; no upgrade, deployment or provider operation performed.
 - Latest typecheck/lint PASS (2026-10-06): `pnpm nx run-many -t typecheck lint -p api admin client shared-utils --parallel=1 --skipNxCache`. API 177 warnings, admin 549, client 227, shared-utils clean; all have 0 errors and warning budgets were not changed. `git diff --check` also passes (line-ending notices only).
 - M3 affiliate/legacy retirement checkpoint PASS (2026-10-06): full API **63 suites / 592 tests**, 85.566s, `pnpm nx run api:test --runInBand --skipNxCache`. Includes 10 HTTP cases covering five retired writes, role rejection and retained GET history, plus positive legacy-overview isolation. The 15 SQL cases inside one Jest wrapper are not added again.

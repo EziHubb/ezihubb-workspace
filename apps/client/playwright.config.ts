@@ -38,6 +38,8 @@ export default defineConfig({
       NEXT_PUBLIC_API_URL: 'https://api.ezihubb.test',
       NEXTAUTH_URL: 'http://127.0.0.1:3000',
       NEXTAUTH_SECRET: 'playwright-local-only-not-a-production-secret',
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: 'pk_test_synthetic_not_a_real_key',
+      NEXT_PUBLIC_PAYPAL_CLIENT_ID: 'synthetic-not-a-real-client',
     },
     url: 'http://127.0.0.1:3000',
     reuseExistingServer: true,

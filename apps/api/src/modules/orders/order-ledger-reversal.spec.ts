@@ -15,7 +15,7 @@ describe('cancellation ledger', () => {
         inserted.set(row.reversalOfId, row);
       }
     });
-    const tx = { sellerLedgerEntry: { findMany: jest.fn().mockResolvedValue(original), createMany } };
+    const tx = { economicOrderContext:{findUnique:jest.fn().mockResolvedValue(null)},sellerLedgerEntry: { findMany: jest.fn().mockResolvedValue(original), createMany } };
     await reverseCancelledOrderLedger(tx as unknown as Prisma.TransactionClient, 'order');
     await reverseCancelledOrderLedger(tx as unknown as Prisma.TransactionClient, 'order');
     expect(inserted.size).toBe(3);

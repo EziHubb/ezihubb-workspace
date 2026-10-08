@@ -54,6 +54,13 @@ export class PaymentsController {
     private readonly orderPayer:      OrderPayerService,
   ) {}
 
+  @Get('checkout/:orderId')
+  @UseGuards(OptionalAuthGuard)
+  @ApiOperation({ summary: 'Recover a payer-authorized frozen online checkout without creating a payment' })
+  async recoverCheckout(@Param('orderId') orderId: string, @CurrentUser() user?: JwtPayload) {
+    return this.orderPayer.recoverCheckout(orderId, user?.sub);
+  }
+
   // OptionalAuthGuard, not JwtAuthGuard: checkout supports guests, so
   // demanding a token here would lock them out of paying entirely. Who may
   // act on the order is decided by OrderPayerService instead — see its

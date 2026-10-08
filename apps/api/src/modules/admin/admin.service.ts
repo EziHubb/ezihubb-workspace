@@ -14,7 +14,8 @@ import {
   NavBadgesDto,
 } from './dto/dashboard.dto';
 import { ReviewResponseDto } from '../reviews/dto/review-response.dto';
-import { ConversationStatus, OrderProgressStepKind, OrderStatus, ReviewStatus, StoreStatus } from '@prisma/client';
+import { ConversationStatus, OrderProgressStepKind, OrderStatus, ReviewStatus, StoreStatus, Prisma } from '@prisma/client';
+import { LEGACY_FINANCE_REPORT, legacyOrderWhere, legacyPaymentWhere, legacyStoreOrderWhere, legacyOrderSql } from '../finances/finance-reporting-scope';
 import { OFF_QUEUE_STATUSES } from '../orders/order-progress.service';
 
 @Injectable()
@@ -37,10 +38,11 @@ export class AdminService {
       monthlyRevenue,
       ordersThisMonth,
       newCustomersThisMonth,
+      legacyOrderCount,
     ] = await Promise.all([
       this.prisma.payment.aggregate({
         _sum: { amount: true },
-        where: { status: 'PAID' },
+        where: legacyPaymentWhere({ status: 'PAID' }),
       }),
       this.prisma.order.count(),
       this.prisma.user.count({ where: { role: 'CUSTOMER', deletedAt: null } }),
@@ -51,7 +53,7 @@ export class AdminService {
       this.prisma.review.count({ where: { status: ReviewStatus.PENDING } }),
       this.prisma.payment.aggregate({
         _sum: { amount: true },
-        where: { status: 'PAID', paidAt: { gte: startOfMonth } },
+        where: legacyPaymentWhere({ status: 'PAID', paidAt: { gte: startOfMonth } }),
       }),
       this.prisma.order.count({ where: { createdAt: { gte: startOfMonth } } }),
       this.prisma.user.count({
@@ -61,13 +63,15 @@ export class AdminService {
           createdAt: { gte: startOfMonth },
         },
       }),
+      this.prisma.order.count({ where: legacyOrderWhere() }),
     ]);
 
     const totalRevenue = Number(revenueResult._sum.amount ?? 0);
     const revenueThisMonth = Number(monthlyRevenue._sum.amount ?? 0);
-    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    const averageOrderValue = legacyOrderCount > 0 ? totalRevenue / legacyOrderCount : 0;
 
     return {
+      financeReporting: LEGACY_FINANCE_REPORT,
       totalRevenue,
       totalOrders,
       totalCustomers,
@@ -94,20 +98,22 @@ export class AdminService {
     const PAID_STATUSES = ['CONFIRMED', 'IN_PRODUCTION', 'SHIPPED', 'DELIVERED', 'COMPLETED'] as OrderStatus[];
 
     const [
-      store,
+      legacyRevenue,
       pendingOrders,
       ordersInProduction,
       pendingReviews,
       monthlyRevenue,
       ordersThisMonth,
       customerRows,
+      legacyOrderCount,
+      totalOrders,
     ] = await Promise.all([
-      this.prisma.store.findUniqueOrThrow({ where: { id: storeId }, select: { totalOrders: true, totalRevenue: true } }),
+      this.prisma.storeOrder.aggregate({ where: legacyStoreOrderWhere({ storeId, status: { in: PAID_STATUSES } }), _sum: { sellerEarnings: true } }),
       this.prisma.storeOrder.count({ where: { storeId, status: OrderStatus.PENDING_PAYMENT } }),
       this.prisma.storeOrder.count({ where: { storeId, status: OrderStatus.IN_PRODUCTION } }),
       this.prisma.review.count({ where: { storeId, status: ReviewStatus.PENDING } }),
       this.prisma.storeOrder.aggregate({
-        where: { storeId, status: { in: PAID_STATUSES }, createdAt: { gte: startOfMonth } },
+        where: legacyStoreOrderWhere({ storeId, status: { in: PAID_STATUSES }, createdAt: { gte: startOfMonth } }),
         _sum:  { sellerEarnings: true },
       }),
       this.prisma.storeOrder.count({ where: { storeId, createdAt: { gte: startOfMonth } } }),
@@ -115,11 +121,12 @@ export class AdminService {
         where:  { storeId },
         select: { createdAt: true, order: { select: { userId: true, guestEmail: true } } },
       }),
+      this.prisma.storeOrder.count({ where: legacyStoreOrderWhere({ storeId }) }),
+      this.prisma.storeOrder.count({ where: { storeId } }),
     ]);
 
-    const totalRevenue = Number(store.totalRevenue);
-    const totalOrders = store.totalOrders;
-    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    const totalRevenue = Number(legacyRevenue._sum.sellerEarnings ?? 0);
+    const averageOrderValue = legacyOrderCount > 0 ? totalRevenue / legacyOrderCount : 0;
     const customerKey = (r: (typeof customerRows)[number]) => r.order.userId ?? r.order.guestEmail;
     const totalCustomers = new Set(customerRows.map(customerKey)).size;
     // Approximated as "distinct customers who ordered this month" — computing
@@ -130,6 +137,7 @@ export class AdminService {
     ).size;
 
     return {
+      financeReporting: LEGACY_FINANCE_REPORT,
       totalRevenue,
       totalOrders,
       totalCustomers,
@@ -156,6 +164,7 @@ export class AdminService {
           COUNT(so.id)                                 AS orders
         FROM "StoreOrder" so
         WHERE so."createdAt" >= ${since} AND so."storeId" = ${storeId}
+          AND ${legacyOrderSql(Prisma.sql`so."orderId"`)}
         GROUP BY date
         ORDER BY date ASC
       `;
@@ -173,6 +182,7 @@ export class AdminService {
       LEFT JOIN "Payment" p
         ON p."orderId" = o.id AND p.status = 'PAID'
       WHERE o."createdAt" >= ${since}
+        AND ${legacyOrderSql(Prisma.sql`o.id`)}
       GROUP BY date
       ORDER BY date ASC
     `;
@@ -217,7 +227,7 @@ export class AdminService {
         p.name,
         p.slug,
         p."soldCount",
-        COALESCE(SUM(oi."unitPrice" * oi.quantity), 0)::float AS revenue,
+        COALESCE(SUM(oi."unitPrice" * oi.quantity) FILTER (WHERE o.id IS NOT NULL), 0)::float AS revenue,
         (
           SELECT pi.url FROM "ProductImage" pi
           WHERE pi."productId" = p.id AND pi."isPrimary" = true
@@ -227,6 +237,7 @@ export class AdminService {
       LEFT JOIN "OrderItem" oi ON oi."productId" = p.id
       LEFT JOIN "Order" o      ON o.id = oi."orderId"
         AND o.status NOT IN ('CANCELLED', 'PENDING_PAYMENT')
+        AND ${legacyOrderSql(Prisma.sql`o.id`)}
       WHERE p."deletedAt" IS NULL
         AND (${storeId ?? null}::text IS NULL OR p."storeId" = ${storeId ?? null})
       GROUP BY p.id, p.name, p.slug, p."soldCount"
@@ -250,9 +261,10 @@ export class AdminService {
       this.prisma.store.count({ where: { status: 'ACTIVE' } }),
       this.prisma.store.count({ where: { status: 'PENDING' } }),
       this.prisma.product.count({ where: { isActive: true, deletedAt: null } }),
-      this.prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'PAID' } }),
+      this.prisma.payment.aggregate({ _sum: { amount: true }, where: legacyPaymentWhere({ status: 'PAID' }) }),
     ]);
     return {
+      financeReporting: LEGACY_FINANCE_REPORT,
       totalStores,
       activeStores,
       pendingStores,
@@ -302,6 +314,7 @@ export class AdminService {
       LEFT JOIN "Product" pr ON pr."storeId" = s.id
       LEFT JOIN "OrderItem" oi ON oi."productId" = pr.id
       LEFT JOIN "Order" o  ON o.id = oi."orderId" AND o.status NOT IN ('CANCELLED','PENDING_PAYMENT')
+        AND ${legacyOrderSql(Prisma.sql`o.id`)}
       LEFT JOIN "Payment" p ON p."orderId" = o.id AND p.status = 'PAID'
       WHERE s.status = 'ACTIVE'
       GROUP BY s.id, s.name, s.slug

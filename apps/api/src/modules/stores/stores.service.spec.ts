@@ -378,8 +378,10 @@ describe('StoresService shipping support finance report', () => {
     }));
     expect(prisma.storeOrder.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
-        shippingSubsidy: { gt: 0 },
-        status: expect.objectContaining({ notIn: expect.arrayContaining(['CANCELLED', 'REFUNDED']) }),
+        AND: [expect.objectContaining({
+          shippingSubsidy: { gt: 0 },
+          status: expect.objectContaining({ notIn: expect.arrayContaining(['CANCELLED', 'REFUNDED']) }),
+        }), { order: { AND: [{}, { economicContext: { is: null } }] } }],
       }),
     }));
   });

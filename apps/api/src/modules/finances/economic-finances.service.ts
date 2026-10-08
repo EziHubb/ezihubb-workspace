@@ -8,7 +8,9 @@ import { economicBalanceDto, EconomicScope, readEconomicBalance, rejectEconomicP
 import { economicEnabled } from './economic-checkout';
 import { parseMinorUnits } from './economic-policy';
 import { TransferReader, verifyAndSettleEconomicPayout } from './economic-transfer';
-import { EconomicHistoryQueryDto, EconomicPayoutRequestDto } from './dto/economic-finances.dto';
+import { EconomicHistoryQueryDto, EconomicPayoutRequestDto, EconomicReconciliationQueryDto } from './dto/economic-finances.dto';
+import { listEconomicReconciliation } from './economic-reconciliation';
+import { readEconomicSummary } from './economic-summary';
 
 type Destination = { kind: string; beneficiaryId: string; currency: string; provenance: string;
   provider: EconomicProvider; providerAccount: string; destination: string };
@@ -17,6 +19,9 @@ type Destination = { kind: string; beneficiaryId: string; currency: string; prov
 @Injectable()
 export class EconomicFinancesService {
   constructor(private readonly prisma: PrismaService, private readonly config: ConfigService) {}
+
+  reconciliation(query: EconomicReconciliationQueryDto) { return listEconomicReconciliation(this.prisma, query); }
+  summary(scope: { currency: string; provenance: EconomicScope['provenance'] }) { return readEconomicSummary(this.prisma, scope); }
 
   async affiliateId(userId: string) {
     const affiliate = await this.prisma.affiliateAccount.findUnique({ where: { userId }, select: { id: true, status: true } });
@@ -33,6 +38,8 @@ export class EconomicFinancesService {
         legacy: { classification: 'LEGACY_UNKNOWN', includedInAvailable: false, requiresReconciliation: true },
         minimumPayoutMinor: minimumPayoutMinor.toString(),
         payoutRequestsEnabled: economicEnabled() && this.destination(scope, false) !== null,
+        debtRecoveryEnabled: economicEnabled() && this.config.get<string>('ECONOMIC_REFUNDS_ENABLED') === 'true'
+          && process.env['ECONOMIC_V1_MODE'] === scope.provenance,
       };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
   }
@@ -47,6 +54,7 @@ export class EconomicFinancesService {
       return { version: 'economic-v1', ...scope, total, page: query.page, limit: query.limit,
         data: rows.map(row => ({ id: row.id, orderId: row.capture.context.orderId, captureId: row.captureId, sourceKey: row.sourceKey,
           capturedMinor: row.amountMinor.toString(), reservedMinor: row.reservedMinor.toString(), paidMinor: row.paidMinor.toString(),
+          reversedMinor: (row.reversedMinor ?? 0n).toString(), debtRecoveredMinor: (row.debtRecoveredMinor ?? 0n).toString(),
           holdReason: row.holdReason, createdAt: row.createdAt })) };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
   }

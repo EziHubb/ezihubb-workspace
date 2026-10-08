@@ -5,6 +5,98 @@
   "projectType": "application",
   "tags": ["scope:api", "type:app"],
   "targets": {
+    "m5-regression-doctor": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node scripts/m5/regression-run.cjs doctor" }
+    },
+    "m5-regression": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node scripts/m5/regression-run.cjs run" }
+    },
+    "m5-regression-test": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node --test scripts/m5/regression.test.cjs" }
+    },
+    "m5-release-report": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node scripts/m5/release-run.cjs report" }
+    },
+    "m5-release-check": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node scripts/m5/release-run.cjs check" }
+    },
+    "m5-release-test": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node --test scripts/m5/release.test.cjs" }
+    },
+    "m5-recovery-doctor": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node scripts/m5/recovery-run.cjs doctor" }
+    },
+    "m5-recovery": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node scripts/m5/recovery-run.cjs drill" }
+    },
+    "m5-recovery-test": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node scripts/m5/recovery-test-run.cjs" }
+    },
+    "m5-sandbox-doctor": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node scripts/m5/sandbox-run.cjs doctor" }
+    },
+    "m5-sandbox-probe": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node scripts/m5/sandbox-run.cjs probe" }
+    },
+    "m5-https-test": {
+      "executor": "@nx/jest:jest", "cache": false,
+      "options": { "jestConfig": "apps/api/jest.config.ts", "runInBand": true, "testPathPatterns": ["m5-https-boundary"] }
+    },
+    "m5-sandbox-test": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node --test scripts/m5/sandbox.test.cjs" }
+    },
+    "m5-init": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node scripts/m5/run.cjs init" }
+    },
+    "m5-doctor": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node scripts/m5/run.cjs doctor" }
+    },
+    "m5-up": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node scripts/m5/run.cjs up" }
+    },
+    "m5-stop": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node scripts/m5/run.cjs stop" }
+    },
+    "m5-verify": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node scripts/m5/run.cjs verify" }
+    },
+    "m5-test": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node --test scripts/m5/guard.test.cjs scripts/m5/migrations.test.cjs scripts/m5/fixtures.test.cjs" }
+    },
+    "m5-contention": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node scripts/m5/run.cjs contention" }
+    },
+    "m5-contention-test": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "node --import tsx --test scripts/m5/contention.test.ts" }
+    },
+    "m5-lint": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "pnpm exec eslint scripts/m5 --max-warnings=0" }
+    },
+    "m5-typecheck": {
+      "executor": "nx:run-commands", "cache": false,
+      "options": { "command": "pnpm exec tsc -p scripts/m5/tsconfig.json" }
+    },
     "build": {
       "executor": "@nx/webpack:webpack",
       "outputs": ["{options.outputPath}"],

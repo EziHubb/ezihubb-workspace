@@ -6,6 +6,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../common/services/storage.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { MessagesService } from '../messages/messages.service';
+import { readEconomicShopEarnings } from '../finances/economic-shop-earnings';
+import { LEGACY_FINANCE_REPORT, legacyLedgerWhere } from '../finances/finance-reporting-scope';
 
 /**
  * Everything the order detail panel shows, for ONE store's part of an order.
@@ -442,17 +444,18 @@ export class SellerOrderDetailService {
   /**
    * What this shop earned on this order.
    *
-   * Read from SellerLedgerEntry, not recomputed. The ledger is what payouts
-   * are batched from, so these are the numbers the seller is actually paid.
-   * Re-running the fee schedule at read time would produce a different answer
-   * the moment platform rates change, and the seller would be reading a
-   * breakdown of a payment they never received.
+   * Versioned orders use immutable shop capture/refund evidence, never receipt
+   * status or legacy ledger. Legacy rows remain an explicitly unknown-provenance
+   * historical projection, not evidence of paid/available money or profit.
+   * Neither branch recomputes the fee schedule at read time.
    */
   async getEarnings(storeId: string, storeOrderId: string) {
+    const economic = await readEconomicShopEarnings(this.prisma, storeId, storeOrderId);
+    if (economic) return economic;
     const row = await this.owned(storeId, storeOrderId);
 
     const entries = await this.prisma.sellerLedgerEntry.findMany({
-      where:   { storeOrderId: row.id, storeId },
+      where:   legacyLedgerWhere({ storeOrderId: row.id, storeId }),
       orderBy: { createdAt: 'asc' },
     });
 
@@ -475,6 +478,9 @@ export class SellerOrderDetailService {
     });
 
     return {
+      version: 'legacy-ledger' as const,
+      financeReporting: LEGACY_FINANCE_REPORT,
+      includedInAvailable: false,
       buyerPaid: {
         total:      round2(subtotal - discount + postage - shippingSubsidy),
         itemsPrice: subtotal,

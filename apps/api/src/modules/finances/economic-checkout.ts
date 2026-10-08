@@ -4,6 +4,7 @@ import { EconomicProvenance, Prisma } from '@prisma/client';
 import { PLATFORM_FEE_DEFAULTS } from '../stores/fees.util';
 import { allocateMinorUnits, parseMinorUnits } from './economic-policy';
 import { persistEconomicQuote } from './economic-capture';
+import { reserveEconomicInventoryInTransaction } from '../products/inventory-reservation';
 import { canonicalEconomicJson, QuoteStoreInput } from './economic-quote';
 
 export function economicMode(): EconomicProvenance {
@@ -83,6 +84,8 @@ export async function freezeCheckoutEconomics(tx: Prisma.TransactionClient, orde
       commissionMinor: rateFee(minor(order.subtotal) - minor(order.discountAmount), rate).toString(),
       ruleReference: createHash('sha256').update(`${rate}:${policy?.lockDays ?? 14}`).digest('hex') };
   }
-  return persistEconomicQuote(tx, { orderId, currency: 'USD', minorExponent: 2, stores: quotedStores,
+  const context = await persistEconomicQuote(tx, { orderId, currency: 'USD', minorExponent: 2, stores: quotedStores,
     tax: { amountMinor: '0', ruleReference: 'checkout:no-customer-tax-collected.v1' }, affiliate }, economicMode());
+  await reserveEconomicInventoryInTransaction(tx, context.id);
+  return context;
 }

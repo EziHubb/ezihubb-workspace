@@ -1,6 +1,8 @@
 import { Prisma } from '@prisma/client';
 import { economicEnabled, freezeCheckoutEconomics, requireEconomicCheckout } from './economic-checkout';
 import { EconomicQuote } from './economic-quote';
+import { reserveEconomicInventoryInTransaction } from '../products/inventory-reservation';
+jest.mock('../products/inventory-reservation',()=>({reserveEconomicInventoryInTransaction:jest.fn().mockResolvedValue([])}));
 
 const decimal = (value: string) => new Prisma.Decimal(value);
 function harness() {
@@ -45,6 +47,7 @@ describe('checkout economic snapshot from authoritative saved rows', () => {
     expect(quote.parts.reduce((sum: bigint, part: { customerMinor: string }) => sum + BigInt(part.customerMinor), 0n)).toBe(3200n);
     expect(BigInt(quote.sellerNetMinor) + BigInt(quote.sellerFeeMinor)).toBe(3500n);
     expect(quote.providerCost).toBe('UNRECONCILED');
+    expect(reserveEconomicInventoryInTransaction).toHaveBeenCalledWith(h.transaction, 'context');
   });
   it('preserves affiliate rate/lock and separates buyer discount from original commission base', async () => {
     const h = harness(); h.order.affiliateId = 'affiliate'; h.order.affiliateDiscountAmount = decimal('1'); h.order.total = decimal('31');

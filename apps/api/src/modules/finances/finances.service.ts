@@ -10,6 +10,7 @@ import Stripe from 'stripe';
 import { Prisma, SellerLedgerEntryType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EncryptionService } from '../../common/services/encryption.service';
+import { LEGACY_FINANCE_REPORT, LEGACY_LEDGER_SQL, legacyLedgerWhere } from './finance-reporting-scope';
 import {
   UpdateBankAccountDto,
   UpdateCurrencyDto,
@@ -80,7 +81,7 @@ export class FinancesService {
   async getOverview(storeId: string) {
     const [balanceAgg, monthSummary, store] = await Promise.all([
       this.prisma.sellerLedgerEntry.aggregate({
-        where: { storeId, payoutId: null },
+        where: legacyLedgerWhere({ storeId, payoutId: null }),
         _sum:  { amount: true },
       }),
       this.getActivitySummary(storeId),
@@ -117,7 +118,7 @@ export class FinancesService {
   async getActivitySummary(storeId: string, month?: number, year?: number) {
     const { start, end } = this.monthRange(month, year);
     const entries = await this.prisma.sellerLedgerEntry.findMany({
-      where:  { storeId, createdAt: { gte: start, lt: end } },
+      where: legacyLedgerWhere({ storeId, createdAt: { gte: start, lt: end } }),
       select: { type: true, amount: true, reversalOfId: true },
     });
 
@@ -135,6 +136,8 @@ export class FinancesService {
 
     return {
       netProfit,
+      financeReporting: LEGACY_FINANCE_REPORT,
+      netBasis: 'HISTORICAL_LEDGER_NOT_PROFIT',
       sales: {
         total: salesTotal,
         totalSalesCount: entries.filter((e) => e.type === 'SALE' && !e.reversalOfId).length,
@@ -178,7 +181,7 @@ export class FinancesService {
             WITH combined AS (
               SELECT id, "createdAt", type::text AS type, amount, description, "storeOrderId"
               FROM "SellerLedgerEntry"
-              WHERE "storeId" = ${storeId}
+              WHERE "storeId" = ${storeId} AND ${LEGACY_LEDGER_SQL}
               UNION ALL
               SELECT id, "createdAt", 'PAYOUT' AS type, (-amount) AS amount,
                      ('Payout · ' || period) AS description, NULL AS "storeOrderId"
@@ -199,7 +202,7 @@ export class FinancesService {
             WITH combined AS (
               SELECT id, "createdAt", type::text AS type, amount, description, "storeOrderId"
               FROM "SellerLedgerEntry"
-              WHERE "storeId" = ${storeId}
+              WHERE "storeId" = ${storeId} AND ${LEGACY_LEDGER_SQL}
               UNION ALL
               SELECT id, "createdAt", 'PAYOUT' AS type, (-amount) AS amount,
                      ('Payout · ' || period) AS description, NULL AS "storeOrderId"
@@ -216,7 +219,7 @@ export class FinancesService {
             OFFSET ${offset} LIMIT ${limit}
           `,
       this.prisma.sellerLedgerEntry.count({
-        where: { storeId, ...(hasMonthFilter ? { createdAt: { gte: start!, lt: end! } } : {}) },
+        where: legacyLedgerWhere({ storeId, ...(hasMonthFilter ? { createdAt: { gte: start!, lt: end! } } : {}) }),
       }),
       this.prisma.sellerPayout.count({
         where: { storeId, ...(hasMonthFilter ? { createdAt: { gte: start!, lt: end! } } : {}) },
@@ -234,6 +237,7 @@ export class FinancesService {
         amount:         Number(r.amount),
         balance:        Number(r.runningBalance),
       })),
+      financeReporting: LEGACY_FINANCE_REPORT,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
@@ -247,7 +251,7 @@ export class FinancesService {
     // in payouts as withdrawal events — matching getActivities()'s semantics.
     const [ledgerEntries, payouts] = await Promise.all([
       this.prisma.sellerLedgerEntry.findMany({
-        where:   { storeId },
+        where: legacyLedgerWhere({ storeId }),
         orderBy: { createdAt: 'asc' },
         select:  { createdAt: true, type: true, description: true, amount: true },
       }),

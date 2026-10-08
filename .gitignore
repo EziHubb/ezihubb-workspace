@@ -5,6 +5,9 @@
 .env.local
 **/.env
 **/.env.local
+/.env.m5.local
+/.env.m5-sandbox.local
+/artifacts/m5/
 
 # Private keys — never commit these
 *.pem

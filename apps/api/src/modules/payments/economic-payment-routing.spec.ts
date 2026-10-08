@@ -6,6 +6,7 @@ import { EconomicWebhookRetryException } from './economic-webhook-retry.exceptio
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EconomicPaymentsService } from './economic-payments.service';
+import { EconomicRefundsService } from '../finances/economic-refunds.service';
 
 describe('versioned payments never fall back to legacy bookkeeping', () => {
   function fixture() {
@@ -62,7 +63,7 @@ describe('versioned payments never fall back to legacy bookkeeping', () => {
   ])('keeps an early PayPal webhook retriable when external creation outruns local binding: %p', async object => {
     const prisma = { payment: { findFirst: jest.fn().mockResolvedValue(null) },
       economicOperation: { findFirst: jest.fn().mockResolvedValue({ id: 'capture-operation' }) } };
-    const service = new EconomicPaymentsService(prisma as unknown as PrismaService, new ConfigService());
+    const service = new EconomicPaymentsService(prisma as unknown as PrismaService, new ConfigService(), {} as EconomicRefundsService);
     await expect(service.paypalWebhook('PAYMENT.CAPTURE.COMPLETED', object)).rejects.toThrow('reconciliation required');
     expect(prisma.economicOperation.findFirst).toHaveBeenCalledWith({ where: {
       id: { in: ['capture-operation'] }, provider: 'PAYPAL', kind: 'CAPTURE',

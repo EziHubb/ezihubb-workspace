@@ -7,6 +7,7 @@ import {
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
+import { LEGACY_FINANCE_REPORT, legacyStoreOrderWhere, legacyLedgerWhere } from '../finances/finance-reporting-scope';
 import { JOBS, QUEUES, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
 import { paginatedResponse } from '../../common/dto/paginated-response.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
@@ -15,6 +16,8 @@ import { OrderProgressStepKind, OrderStatus, Prisma } from '@prisma/client';
 import { TargetedOffersService } from '../marketing/targeted-offers.service';
 import { ensureFixedOrderProgressSteps } from '../orders/order-progress.defaults';
 import { syncOrderStatusFromShops } from '../orders/order-status-sync';
+import { economicTransaction } from '../finances/economic-balance';
+import { assertEconomicShopFulfillmentAllowed } from '../finances/economic-fulfillment-guard';
 
 export class UpdateStoreOrderDto {
   @IsEnum(OrderStatus)
@@ -126,7 +129,8 @@ export class StoreOrdersService {
       throw new BadRequestException('Invalid status transition');
     }
 
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const updated = await economicTransaction(this.prisma, async (tx) => {
+      if (dto.status) await assertEconomicShopFulfillmentAllowed(tx, order.orderId, [storeOrderId]);
       const steps = await ensureFixedOrderProgressSteps(tx, storeId);
       const progressKind = dto.status === 'DELIVERED'
         ? OrderProgressStepKind.DELIVERED
@@ -180,7 +184,9 @@ export class StoreOrdersService {
       throw new BadRequestException('Order already shipped');
     }
 
-    const updated = await this.prisma.$transaction(async (tx) => {
+    let versioned = false;
+    const updated = await economicTransaction(this.prisma, async (tx) => {
+      versioned = await assertEconomicShopFulfillmentAllowed(tx, storeOrder.orderId, [storeOrderId]);
       const steps = await ensureFixedOrderProgressSteps(tx, storeId);
       const shippedStep = steps.find((step) => step.kind === OrderProgressStepKind.SHIPPED);
       const result = await tx.storeOrder.update({
@@ -197,6 +203,10 @@ export class StoreOrdersService {
       await syncOrderStatusFromShops(tx, [storeOrder.orderId]);
       return result;
     });
+
+    // Versioned notifications need their own durable outbox consumer, not a
+    // legacy post-commit side effect that could repeat after an unknown result.
+    if (versioned) return updated;
 
     // Notify buyer
     let buyerEmail: string | null = storeOrder.order.guestEmail ?? null;
@@ -254,7 +264,7 @@ export class StoreOrdersService {
         where: { storeId, createdAt: { gte: today } },
       }),
       this.prisma.storeOrder.aggregate({
-        where:  { storeId, status: { in: ['CONFIRMED', 'IN_PRODUCTION', 'SHIPPED', 'DELIVERED', 'COMPLETED'] as OrderStatus[] }, createdAt: { gte: monthStart } },
+        where: legacyStoreOrderWhere({ storeId, status: { in: ['CONFIRMED', 'IN_PRODUCTION', 'SHIPPED', 'DELIVERED', 'COMPLETED'] as OrderStatus[] }, createdAt: { gte: monthStart } }),
         _sum:   { sellerEarnings: true },
       }),
       this.prisma.storeOrder.count({
@@ -267,6 +277,7 @@ export class StoreOrdersService {
     ]);
 
     return {
+      financeReporting: LEGACY_FINANCE_REPORT,
       ordersToday,
       revenueThisMonth: Number(revenueThisMonth._sum?.sellerEarnings ?? 0),
       pendingShipments,
@@ -307,13 +318,17 @@ export class StoreOrdersService {
 
     // Includes cancellation reversals, including deductions after a prior payout.
     const available = await this.prisma.sellerLedgerEntry.aggregate({
-      where: { storeId, payoutId: null },
+      where: legacyLedgerWhere({ storeId, payoutId: null }),
       _sum: { amount: true },
     });
 
     return {
       ...paginatedResponse(payouts, page, limit, total),
-      availableBalance: Number(available._sum?.amount ?? 0),
+      // Compatibility field cannot advertise unverified ledger money as cash.
+      availableBalance: 0,
+      historicalLedgerBalance: Number(available._sum?.amount ?? 0),
+      financeReporting: LEGACY_FINANCE_REPORT,
+      includedInAvailable: false,
     };
   }
 

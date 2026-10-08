@@ -80,8 +80,8 @@ export function ActivitySummaryCard({
 
       <p className="text-sm text-secondary mb-4">
         Your current{' '}
-        <TooltipTerm tooltip="Your total Sales minus any deductions like refunds and your total Fees and Marketing costs for the selected time period.">
-          net profit
+        <TooltipTerm tooltip="Historical ledger entries only (LEGACY_UNKNOWN). Excludes versioned captured funds and does not include all production, shipping or operating costs; this is not profit or available cash.">
+          historical ledger net
         </TooltipTerm>{' '}
         on {monthLabel} is{' '}
         <span className={summary.netProfit < 0 ? 'text-error font-bold' : 'text-secondary font-bold'}>

@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
+import { LEGACY_FINANCE_REPORT, legacyOrderWhere } from '../finances/finance-reporting-scope';
+import { readLegacyRevenueSeries } from '../finances/legacy-revenue-series';
 
 @Injectable()
 export class ShopStatsService {
@@ -24,7 +26,7 @@ export class ShopStatsService {
 
   private subDays(d: Date, days: number): Date {
     const r = new Date(d);
-    r.setDate(r.getDate() - days);
+    r.setUTCDate(r.getUTCDate() - days);
     return r;
   }
 
@@ -43,31 +45,19 @@ export class ShopStatsService {
 
   async getOverview(range: string, storeId?: string | null) {
     const start = this.rangeStart(range);
-    const days  = Math.round((Date.now() - start.getTime()) / 86_400_000) || 1;
-
-    const orderWhere: Prisma.OrderWhereInput = {
-      createdAt: { gte: start },
-      status:    { notIn: ['CANCELLED', 'REFUNDED'] },
-    };
-    if (storeId) orderWhere.storeOrders = { some: { storeId } };
-    const paidOrderWhere: Prisma.OrderWhereInput = {
-      ...orderWhere,
-      payment: { is: { status: 'PAID' } },
-    };
-
-    const [totalOrders, orderSum, visits, series] = await Promise.all([
-      this.prisma.order.count({ where: orderWhere }),
-      this.prisma.order.aggregate({ where: paidOrderWhere, _sum: { total: true } }),
-      this.sumRangeMetric(days, 'visits', storeId),
-      storeId
-        ? this.getStoreOrderTimeSeries(storeId, start, days)
-        : this.getDailyTimeSeries(days),
-    ]);
-
-    const totalRevenue = Number(orderSum._sum?.total ?? 0);
+    const end = new Date();
+    const series = await this.getOrderTimeSeries(start, end, storeId);
+    const totalOrders = series.reduce((sum, row) => sum + row.orders, 0);
+    const totalRevenue = series.reduce((sum, row) => sum + row.revenue, 0);
+    const visits = series.reduce((sum, row) => sum + row.visits, 0);
     const conversion   = visits > 0 ? ((totalOrders / visits) * 100) : 0;
 
     return {
+      financeReporting: LEGACY_FINANCE_REPORT,
+      revenueBasis: storeId ? 'LEGACY_SHOP_MERCHANDISE_AND_CUSTOMER_SHIPPING' : 'LEGACY_ORDER_CUSTOMER_TOTAL',
+      revenueWindow: { start, end, timeZone: 'UTC' },
+      trafficBasis: 'UTC_CALENDAR_COUNTERS_NOT_EXACT_ROLLING_WINDOW',
+      conversionBasis: 'LEGACY_ORDER_COUNT_OVER_OBSERVED_TRAFFIC',
       visits,
       orders:         totalOrders,
       revenue:        totalRevenue,
@@ -89,64 +79,23 @@ export class ShopStatsService {
     }
   }
 
-  /** DB-computed daily time series for a specific store (no Redis dependency). */
-  private async getStoreOrderTimeSeries(storeId: string, start: Date, days: number) {
-    const orders = await this.prisma.order.findMany({
-      where: { storeOrders: { some: { storeId } }, createdAt: { gte: start }, status: { notIn: ['CANCELLED', 'REFUNDED'] } },
-      select: { createdAt: true, total: true, payment: { select: { status: true } } },
-    });
-
-    const map = new Map<string, { visits: number; orders: number; revenue: number }>();
-    for (let i = days - 1; i >= 0; i--) {
-      map.set(this.dateStr(this.subDays(new Date(), i)), { visits: 0, orders: 0, revenue: 0 });
-    }
-    for (const o of orders) {
-      const d = this.dateStr(new Date(o.createdAt));
-      if (map.has(d)) {
-        const row = map.get(d)!;
-        row.orders  += 1;
-        if (o.payment?.status === 'PAID') row.revenue += Number(o.total);
-      }
-    }
-
+  /** Money/counts share one DB read; Redis contributes traffic only. Includes
+   * both partial UTC boundary days of the existing rolling time window. */
+  private async getOrderTimeSeries(start: Date, end: Date, storeId?: string | null) {
+    const series = (await readLegacyRevenueSeries(this.prisma, start, end, storeId))
+      .map((row) => ({ ...row, visits: 0 }));
     if (this.redis.isAvailable()) {
-      const dates = [...map.keys()];
       try {
         const values = await this.redis.getClient().mget(
-          ...dates.map((d) => `analytics:store:${storeId}:${d}:visits`),
+          ...series.map(({ date }) => storeId ? `analytics:store:${storeId}:${date}:visits` : `analytics:visits:${date}`),
         );
-        dates.forEach((d, i) => { map.get(d)!.visits = Number(values[i] ?? 0); });
+        series.forEach((row, i) => {
+          const visits = Number(values[i] ?? 0);
+          row.visits = Number.isSafeInteger(visits) && visits >= 0 ? visits : 0;
+        });
       } catch { /* no-op */ }
     }
-
-    return [...map.entries()].map(([date, v]) => ({ date, ...v }));
-  }
-
-  private async getDailyTimeSeries(days: number) {
-    const result: { date: string; visits: number; orders: number; revenue: number }[] = [];
-    const client = this.redis.isAvailable() ? this.redis.getClient() : null;
-
-    for (let i = days - 1; i >= 0; i--) {
-      const date    = this.dateStr(this.subDays(new Date(), i));
-      let revenue   = 0;
-      let orders    = 0;
-      let visits    = 0;
-
-      if (client) {
-        try {
-          const [rev, ord, vis] = await Promise.all([
-            client.get(`analytics:revenue:${date}`),
-            client.get(`analytics:orders:${date}`),
-            client.get(`analytics:visits:${date}`),
-          ]);
-          revenue = Number(rev ?? 0);
-          orders  = Number(ord ?? 0);
-          visits  = Number(vis ?? 0);
-        } catch { /* no-op */ }
-      }
-      result.push({ date, visits, orders, revenue });
-    }
-    return result;
+    return series;
   }
 
   // ── Shopper stats ──────────────────────────────────────────────────────────
@@ -393,7 +342,9 @@ export class ShopStatsService {
       by: ['productId', 'unitPrice'],
       where: {
         productId: { in: productIds },
-        order: { payment: { is: { status: 'PAID' } } },
+        ...(storeId ? { storeId } : {}),
+        OR: [{ storeOrderId: null }, { storeOrder: { is: { ...(storeId ? { storeId } : {}), status: { notIn: ['CANCELLED', 'REFUNDED'] } } } }],
+        order: legacyOrderWhere({ status: { notIn: ['CANCELLED', 'REFUNDED'] }, payment: { is: { status: 'PAID' } } }),
       },
       _sum: { quantity: true },
       _count: { _all: true },
@@ -427,7 +378,7 @@ export class ShopStatsService {
       d.favourites = wishMap.get(d.productId) ?? 0;
     }
 
-    return { data, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+    return { financeReporting: LEGACY_FINANCE_REPORT, data, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
   }
 
   private resolveListingSort(sort: string) {
@@ -442,13 +393,13 @@ export class ShopStatsService {
 
   // ── Individual listing stats ───────────────────────────────────────────────
 
-  async getListingStats(productId: string, range: string) {
+  async getListingStats(productId: string, range: string, storeId?: string) {
     const start = this.rangeStart(range);
     const days  = Math.round((Date.now() - start.getTime()) / 86_400_000);
 
     const [product, orderItems, wishlistCount, reviews] = await Promise.all([
       this.prisma.product.findUnique({
-        where: { id: productId },
+        where: { id: productId, ...(storeId ? { storeId } : {}) },
         select: {
           id: true, name: true, slug: true, status: true, isActive: true,
           viewCount: true, soldCount: true, basePrice: true, compareAtPrice: true,
@@ -459,7 +410,10 @@ export class ShopStatsService {
       this.prisma.orderItem.findMany({
         where: {
           productId,
+          ...(storeId ? { storeId } : {}),
+          OR: [{ storeOrderId: null }, { storeOrder: { is: { ...(storeId ? { storeId } : {}), status: { notIn: ['CANCELLED', 'REFUNDED'] } } } }],
           order: {
+            ...legacyOrderWhere(),
             createdAt: { gte: start },
             status: { notIn: ['CANCELLED', 'REFUNDED'] },
             payment: { is: { status: 'PAID' } },
@@ -498,6 +452,7 @@ export class ShopStatsService {
     const timeSeries = [...dailyMap.entries()].map(([date, v]) => ({ date, ...v }));
 
     return {
+      financeReporting: LEGACY_FINANCE_REPORT,
       product: {
         id:           product.id,
         name:         product.name,

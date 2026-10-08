@@ -9,9 +9,10 @@ import { QueueModule } from '../../queue/queue.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { AffiliatesModule } from '../affiliates/affiliates.module';
 import { ProductsModule } from '../products/products.module';
+import { FinancesModule } from '../finances/finances.module';
 
 @Module({
-  imports: [QueueModule, AnalyticsModule, AffiliatesModule, ProductsModule],
+  imports: [QueueModule, AnalyticsModule, AffiliatesModule, ProductsModule, FinancesModule],
   controllers: [PaymentsController, WebhooksController],
   providers: [OrderPayerService, EconomicPaymentsService, PaymentsService, PaypalService],
   exports: [PaymentsService, PaypalService],

@@ -47,7 +47,8 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Restore preference from localStorage (cookie is server-side read-only here)
-    const stored = (localStorage.getItem(CURRENCY_LS_KEY) as CurrencyCode | null) ?? 'USD';
+    let stored = 'USD';
+    try { stored = localStorage.getItem(CURRENCY_LS_KEY) ?? 'USD'; } catch { /* Default display currency; checkout still works. */ }
     if (stored in CURRENCIES) setCurrencyState(stored as CurrencyCode);
 
     // Fetch exchange rates
@@ -61,8 +62,8 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const setCurrency = (code: CurrencyCode) => {
     if (!(code in CURRENCIES)) return;
     setCurrencyState(code);
-    localStorage.setItem(CURRENCY_LS_KEY, code);
-    document.cookie = `${CURRENCY_COOKIE}=${code};path=/;max-age=31536000;SameSite=Lax`;
+    try { localStorage.setItem(CURRENCY_LS_KEY, code); } catch { /* Keep this document's preference. */ }
+    try { document.cookie = `${CURRENCY_COOKIE}=${code};path=/;max-age=31536000;SameSite=Lax`; } catch { /* Cookies can also be blocked. */ }
   };
 
   const format = (usdAmount: number): string => {

@@ -1,0 +1,10 @@
+[
+  "capture-process-killed-before-booking-commit",
+  "capture-process-killed-after-booking-commit",
+  "worker-killed-before-lifecycle-commit",
+  "worker-killed-after-lifecycle-commit",
+  "worker-lease-expiry-and-stale-ack",
+  "external-create-killed-before-local-ack",
+  "redis-outage-security-and-durable-replay",
+  "postgres-snapshot-restore-and-measured-loss"
+]

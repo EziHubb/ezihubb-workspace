@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import { safeLocalStorage } from '../safe-local-storage';
 
 /**
  * How many conversations the dock will hold at once.
@@ -76,6 +77,7 @@ export const useChatDock = create<ChatDockState>()(
     }),
     {
       name: 'ezihubb-chat-dock',
+      storage: createJSONStorage(() => safeLocalStorage),
       // `expanded` is deliberately not persisted. Which conversations someone
       // had docked is worth carrying across a reload; having a chat panel
       // spring open over the page they just loaded is not — that is the app

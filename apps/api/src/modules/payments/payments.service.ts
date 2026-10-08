@@ -17,6 +17,7 @@ import {
 } from '@prisma/client';
 import Stripe from 'stripe';
 import { PrismaService } from '../../prisma/prisma.service';
+import { LEGACY_FINANCE_REPORT, legacyPaymentWhere } from '../finances/finance-reporting-scope';
 import { RedisService } from '../../common/services/redis.service';
 import {
   JOBS,
@@ -669,6 +670,7 @@ export class PaymentsService {
   }
 
   async getStats(): Promise<{
+    financeReporting: typeof LEGACY_FINANCE_REPORT;
     totalRevenue: number;
     pendingPayouts: number;
     refundedAmount: number;
@@ -677,22 +679,23 @@ export class PaymentsService {
     const [paid, pending, refunded, total] = await Promise.all([
       this.prisma.payment.aggregate({
         _sum: { amount: true },
-        where: { status: PaymentStatus.PAID },
+        where: legacyPaymentWhere({ status: PaymentStatus.PAID }),
       }),
       this.prisma.payment.aggregate({
         _sum: { amount: true },
-        where: { status: PaymentStatus.PENDING },
+        where: legacyPaymentWhere({ status: PaymentStatus.PENDING }),
       }),
       this.prisma.payment.aggregate({
         _sum: { refundedAmount: true },
-        where: { status: { in: [PaymentStatus.REFUNDED, PaymentStatus.PARTIALLY_REFUNDED] } },
+        where: legacyPaymentWhere({ status: { in: [PaymentStatus.REFUNDED, PaymentStatus.PARTIALLY_REFUNDED] } }),
       }),
-      this.prisma.payment.count(),
+      this.prisma.payment.count({ where: legacyPaymentWhere() }),
     ]);
 
-    const paidCount = await this.prisma.payment.count({ where: { status: PaymentStatus.PAID } });
+    const paidCount = await this.prisma.payment.count({ where: legacyPaymentWhere({ status: PaymentStatus.PAID }) });
 
     return {
+      financeReporting: LEGACY_FINANCE_REPORT,
       totalRevenue:    Number(paid._sum.amount ?? 0),
       pendingPayouts:  Number(pending._sum.amount ?? 0),
       refundedAmount:  Number(refunded._sum.refundedAmount ?? 0),

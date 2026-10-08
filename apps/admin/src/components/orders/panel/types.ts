@@ -99,7 +99,10 @@ export interface OrderPanelDetail {
   };
 }
 
-export interface OrderPanelEarnings {
+export interface LegacyOrderPanelEarnings {
+  version: 'legacy-ledger';
+  financeReporting: { classification: 'LEGACY_UNKNOWN'; versionedFundsIncluded: false; requiresReconciliation: true };
+  includedInAvailable: false;
   buyerPaid: {
     total:      number;
     itemsPrice: number;
@@ -117,6 +120,25 @@ export interface OrderPanelEarnings {
   /** No ledger rows yet — the order has not been paid for. */
   pending:   boolean;
 }
+
+export interface EconomicOrderPanelEarnings {
+  version: 'economic-v1'; provenance: 'LIVE' | 'TEST'; currency: 'USD'; minorExponent: 2;
+  orderId: string; storeId: string; storeOrderId: string; captureId: string | null;
+  basis: 'IMMUTABLE_VERIFIED_SHOP_ALLOCATION'; readOnly: true; legacyIncluded: false;
+  state: 'AWAITING_CAPTURE' | 'CAPTURE_VERIFIED'; pendingRefundCount: number;
+  actualProviderCostMinor: null; actualShippingCostMinor: null; profitMinor: null;
+  taxBasis: 'ORDER_LEVEL_TAX_NOT_ALLOCATED_TO_SHOP';
+  amounts: null | {
+    customerCapturedMinor: string; customerRefundedMinor: string; netCustomerCollectedMinor: string;
+    platformFundingMinor: string; sellerGrossMinor: string;
+    sellerAllocatedMinor: string; sellerReversedMinor: string; netSellerAllocationMinor: string;
+    sellerFeeMinor: string; reversedFeeMinor: string; netFeeMinor: string;
+    paidMinor: string; reservedMinor: string; debtRecoveredMinor: string;
+  };
+  feeLines: { code: string; ruleReference: string; capturedMinor: string; reversedMinor: string; netMinor: string }[];
+}
+
+export type OrderPanelEarnings = LegacyOrderPanelEarnings | EconomicOrderPanelEarnings;
 
 export interface PanelMessage {
   id:             string;

@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api-client';
 import { BeneficiaryKind, CapturedBalance, CapturedLot, CapturedPayout, EconomicHistory, MoneyMode,
   formatCapturedUsd as money, minorToUsdInput, usdInputToMinor } from '../../lib/economic-finances';
+import { EconomicDebtRecovery } from './EconomicDebtRecovery';
 
 const control = 'min-h-11 rounded-button border border-border px-3 py-2 bg-surface text-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50';
 type Props = { actorId: string; storeId: string; platform?: { kind: BeneficiaryKind; beneficiaryId: string }; mode: MoneyMode };
@@ -112,11 +113,14 @@ export function CapturedFinancePanel({ actorId, storeId, platform, mode }: Props
           ['Reserved for payout', available.reservedMinor, 'Allocated to requested or verifying payouts.'],
           ['Paid out', available.paidMinor, 'Completed settlements backed by provider evidence.'],
           ['Outstanding debt', available.debtMinor, 'Deducted from eligible funds before new reservations.'],
+          ...(available.reversedMinor !== undefined ? [['Reversed by refunds', available.reversedMinor, 'Verified original-allocation reversals; paid payout evidence remains unchanged.']] : []),
+          ...(available.debtRecoveredMinor !== undefined ? [['Debt recovered', available.debtRecoveredMinor, 'Eligible captured funds retained with immutable audit evidence; no external debit.']] : []),
         ] as const).map(([label, value, description]) => <div key={label} className="border border-border bg-surface rounded-card p-5 min-w-0">
           <dt className="text-sm font-semibold">{label}</dt><dd className="mt-2 text-2xl font-bold tabular-nums break-words">{money(value)}</dd>
           <p className="mt-2 text-sm">{description}</p>
         </div>)}
       </dl>
+      {platform && available.debtRecoveryEnabled && <EconomicDebtRecovery kind={platform.kind} beneficiaryId={platform.beneficiaryId} mode={mode} debtMinor={available.debtMinor} />}
       {!platform && <form onSubmit={request} className="border border-border bg-surface rounded-card p-5 space-y-3">
         <h2 className="font-semibold text-lg">Request payout</h2>
         <p className="text-sm">Minimum {money(available.minimumPayoutMinor)}. Recipient details are verified separately; this form cannot change the destination.</p>
@@ -164,6 +168,8 @@ export function CapturedFinancePanel({ actorId, storeId, platform, mode }: Props
           <summary className="cursor-pointer break-words">Order {row.orderId} — {money(row.capturedMinor)}</summary>
           <dl className="mt-3 space-y-2 text-sm break-words"><div><dt>Capture / source</dt><dd>{row.captureId} / {row.sourceKey}</dd></div>
             <div><dt>Reserved / paid</dt><dd>{money(row.reservedMinor)} / {money(row.paidMinor)}</dd></div>
+            {row.reversedMinor !== undefined && <div><dt>Refund reversal</dt><dd>{money(row.reversedMinor)}</dd></div>}
+            {row.debtRecoveredMinor !== undefined && <div><dt>Retained for debt recovery</dt><dd>{money(row.debtRecoveredMinor)}</dd></div>}
             {row.holdReason && <div><dt>Hold reason</dt><dd>{row.holdReason}</dd></div>}
           </dl></details>)}
         <PageControls page={lotPage} total={lots.data.total} change={setLotPage} />

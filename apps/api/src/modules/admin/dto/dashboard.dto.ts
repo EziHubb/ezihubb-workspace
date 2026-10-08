@@ -1,6 +1,7 @@
 import { OrderStatus } from '@prisma/client';
 
 export class DashboardKPIsDto {
+  financeReporting?: { classification: 'LEGACY_UNKNOWN'; versionedFundsIncluded: false; requiresReconciliation: true };
   totalRevenue!: number;
   totalOrders!: number;
   totalCustomers!: number;

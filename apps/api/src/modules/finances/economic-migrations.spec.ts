@@ -16,6 +16,8 @@ it('runs the real economic migration constraints in isolated PostgreSQL', async 
     expect(stdout).toContain('# fail 0');
     expect(stdout).toContain('# cancelled 0');
     expect(stdout).toContain('# skipped 0');
+    expect(stdout).toContain('persists signed rounding plans for successive quantities');
+    expect(stdout).toContain('verifies original multi-shop affiliate residual ownership');
   } catch (error) {
     const failure = error as Error & { stdout?: string; stderr?: string };
     // Only synthetic fixtures are used by this subprocess; no credentials/DSN.

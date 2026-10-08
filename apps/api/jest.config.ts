@@ -5,6 +5,8 @@ export default {
   transform: {
     '^.+\\.[tj]s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }],
   },
+  // Plain Node harness helpers are already executable CommonJS, not TS inputs.
+  transformIgnorePatterns: ['[/\\\\]node_modules[/\\\\]', '[/\\\\]scripts[/\\\\]m5[/\\\\].*\\.cjs$'],
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/apps/api',
   coverageThreshold: {

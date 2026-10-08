@@ -12,6 +12,7 @@ import { ModerationService } from '../moderation/moderation.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
+import { LEGACY_FINANCE_REPORT, legacyOrderSql, legacyStoreOrderWhere } from '../finances/finance-reporting-scope';
 import { StorageService } from '../../common/services/storage.service';
 import { RedisService } from '../../common/services/redis.service';
 import { AnalyticsService } from '../analytics/analytics.service';
@@ -479,6 +480,7 @@ export class StoresService {
       // declare and can safely format ratings and revenue.
       rating: Number(store.rating),
       totalRevenue: Number(store.totalRevenue),
+      financeReporting: LEGACY_FINANCE_REPORT,
       totalProducts,
       followerCount: store._count.followers,
     };
@@ -745,11 +747,11 @@ export class StoresService {
       activeStores,
     ] = await Promise.all([
       this.prisma.storeOrder.aggregate({
-        where:  orderWhere,
+        where: legacyStoreOrderWhere(orderWhere),
         _sum:   { platformFee: true },
       }),
       this.prisma.storeOrder.aggregate({
-        where:  { ...orderWhere, createdAt: { gte: monthStart } },
+        where: legacyStoreOrderWhere({ ...orderWhere, createdAt: { gte: monthStart } }),
         _sum:   { platformFee: true },
       }),
       this.prisma.sellerPayout.aggregate({
@@ -766,6 +768,7 @@ export class StoresService {
     ]);
 
     return {
+      financeReporting: LEGACY_FINANCE_REPORT,
       totalFeesCollected:    Number(totalFees._sum.platformFee    ?? 0),
       feesThisMonth:         Number(feesThisMonth._sum.platformFee ?? 0),
       pendingPayoutAmount:   Number(pendingPayouts._sum.amount ?? 0),
@@ -786,6 +789,7 @@ export class StoresService {
             0::float AS payouts
           FROM "StoreOrder" so
           WHERE so."createdAt" >= ${since} AND so.status <> 'CANCELLED' AND so."storeId" = ${storeId}
+            AND ${legacyOrderSql(Prisma.sql`so."orderId"`)}
           GROUP BY date
           ORDER BY date ASC
         `
@@ -796,6 +800,7 @@ export class StoresService {
             0::float AS payouts
           FROM "StoreOrder" so
           WHERE so."createdAt" >= ${since} AND so.status <> 'CANCELLED'
+            AND ${legacyOrderSql(Prisma.sql`so."orderId"`)}
           GROUP BY date
           ORDER BY date ASC
         `;
@@ -855,6 +860,7 @@ export class StoresService {
         WHERE so."createdAt" >= ${since}
           AND so."shippingSubsidy" > 0
           AND so.status NOT IN ('CANCELLED', 'REFUNDED')
+          AND ${legacyOrderSql(Prisma.sql`so."orderId"`)}
       `,
       this.prisma.$queryRaw<SeriesRow[]>`
         SELECT
@@ -868,6 +874,7 @@ export class StoresService {
         WHERE so."createdAt" >= ${since}
           AND so."shippingSubsidy" > 0
           AND so.status NOT IN ('CANCELLED', 'REFUNDED')
+          AND ${legacyOrderSql(Prisma.sql`so."orderId"`)}
         GROUP BY DATE_TRUNC('day', so."createdAt")
         ORDER BY DATE_TRUNC('day', so."createdAt") ASC
       `,
@@ -882,6 +889,7 @@ export class StoresService {
         WHERE so."createdAt" >= ${since}
           AND so."shippingSubsidy" > 0
           AND so.status NOT IN ('CANCELLED', 'REFUNDED')
+          AND ${legacyOrderSql(Prisma.sql`so."orderId"`)}
         GROUP BY s.id, s.name
         ORDER BY subsidy DESC
         LIMIT 5
@@ -901,6 +909,7 @@ export class StoresService {
     const merchandiseSubtotal = Number(aggregate.merchandiseSubtotal);
 
     return {
+      financeReporting: LEGACY_FINANCE_REPORT,
       periodDays: days,
       committedSubsidy,
       realizedSubsidy,
@@ -965,7 +974,7 @@ export class StoresService {
 
     const [rows, total] = await Promise.all([
       this.prisma.storeOrder.findMany({
-        where,
+        where: legacyStoreOrderWhere(where),
         select: {
           id: true,
           orderId: true,
@@ -989,7 +998,7 @@ export class StoresService {
         take: limit,
         orderBy: [primaryOrder, { createdAt: 'desc' }],
       }),
-      this.prisma.storeOrder.count({ where }),
+      this.prisma.storeOrder.count({ where: legacyStoreOrderWhere(where) }),
     ]);
 
     return paginatedResponse(rows.map((row) => {

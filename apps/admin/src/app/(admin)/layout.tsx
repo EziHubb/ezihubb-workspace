@@ -9,6 +9,7 @@ import { AdminSessionMonitor } from '../../components/providers/AdminSessionMoni
 import { resolveInStoreMode, STORE_CONTEXT_COOKIE } from '../../lib/store-context-shared';
 import { ServerStoreModeProvider } from '../../lib/server-store-mode';
 import { getAdminRouteRedirect } from '../../lib/route-guard';
+import { LegacyFinanceNotice } from '../../components/finances/LegacyFinanceNotice';
 
 export default async function AdminLayout({
   children,
@@ -71,6 +72,7 @@ export default async function AdminLayout({
             their own internal panes without growing the document. */}
         <a href="#admin-main-content" className="sr-only z-[10000] rounded-md bg-white px-4 py-2 text-secondary shadow focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to main content</a>
         <main id="admin-main-content" tabIndex={-1} className="flex h-0 min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-3 outline-none sm:p-4 lg:p-8">
+          <LegacyFinanceNotice />
           {children}
         </main>
       </div>

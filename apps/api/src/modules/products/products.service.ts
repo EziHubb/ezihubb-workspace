@@ -14,6 +14,7 @@ import { Model } from 'mongoose';
 import { Prisma, OrderStatus, ProductStatus, ProductImageType, PrintSide, ProductType } from '@prisma/client';
 import { QUEUES, JOBS, DEFAULT_JOB_OPTIONS, RemoveBackgroundJobData } from '../../queue/queue.constants';
 import { PrismaService } from '../../prisma/prisma.service';
+import { LEGACY_FINANCE_REPORT, legacyOrderWhere, legacyOrderSql } from '../finances/finance-reporting-scope';
 import {
   RedisService,
   CacheKeys,
@@ -1338,13 +1339,13 @@ export class ProductsService {
         }),
         // Current period aggregate
         this.prisma.orderItem.aggregate({
-          where: { productId: id, order: { status: { in: ACTIVE as unknown as OrderStatus[] }, createdAt: { gte: since } } },
+          where: { productId: id, order: legacyOrderWhere({ status: { in: ACTIVE as unknown as OrderStatus[] }, createdAt: { gte: since } }) },
           _count: { _all: true },
           _sum:   { unitPrice: true },
         }),
         // Previous period aggregate (for trend)
         this.prisma.orderItem.aggregate({
-          where: { productId: id, order: { status: { in: ACTIVE as unknown as OrderStatus[] }, createdAt: { gte: prevSince, lt: since } } },
+          where: { productId: id, order: legacyOrderWhere({ status: { in: ACTIVE as unknown as OrderStatus[] }, createdAt: { gte: prevSince, lt: since } }) },
           _count: { _all: true },
           _sum:   { unitPrice: true },
         }),
@@ -1359,6 +1360,7 @@ export class ProductsService {
           WHERE oi."productId" = ${id}
             AND o."createdAt" >= ${since}
             AND o.status = ANY(${ACTIVE}::"OrderStatus"[])
+            AND ${legacyOrderSql(Prisma.sql`o.id`)}
           GROUP BY day
           ORDER BY day ASC
         `,
@@ -1374,6 +1376,7 @@ export class ProductsService {
             AND o."createdAt" >= ${prevSince}
             AND o."createdAt" < ${since}
             AND o.status = ANY(${ACTIVE}::"OrderStatus"[])
+            AND ${legacyOrderSql(Prisma.sql`o.id`)}
           GROUP BY day
           ORDER BY day ASC
         `,
@@ -1431,6 +1434,7 @@ export class ProductsService {
 
     return {
       // KPI values
+      financeReporting: LEGACY_FINANCE_REPORT,
       views,
       viewsTotal,
       favorites,

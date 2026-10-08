@@ -3,6 +3,34 @@
 Version: `2026-10-03.v1`. Owner approved the five-action plan with “chốt”.
 This is a prospective contract, not a live feature or proof of collected money.
 
+Implementation update — 2026-10-08: later M3/M4 extensions now register guarded
+checkout/capture, refund evidence and settlement/debt, a disabled dispatcher,
+original stock expiry/reacquisition, audited DEAD database recovery, shared manual
+fulfillment gates and scoped reports. Earlier "not implemented/imported" statements
+below describe their foundation checkpoint, not the current source. See
+`m4-closeout.md` for final M4 local acceptance and the M5 handoff, and
+`m4-implementation.md` for implementation details. No provider or
+production activation occurred. DB-only recovery never resends external effects.
+Gift-wrap refund is now implemented only with separate platform SUPER_ADMIN
+approval, as recorded in the owner-approved addendum below. Automatic eligible
+shipping refunds and separately approved shipping exceptions are integrated,
+as is original-resource recovery for supported Printify contracts. Tax-bearing
+refunds and unsupported providers remain blocked/manual, not certified features.
+M4 repository implementation is CLOSED; operational release is not. Multi-session PostgreSQL
+verification remains SKIPPED at owner request, not passed.
+
+Checkout creation extension — 2026-10-08: a required opaque client request key is
+hashed with the authenticated account or guest cart cookie. Its original payload
+hash and response are recorded atomically with the prospective order. Changed
+payloads, closed/deleted orders and cloned original baskets fail closed. A minimal
+immutable receipt survives authorized deletion of a non-financial order; no
+personal contact details or raw cart-cookie/key is stored in this receipt.
+Read-only recovery never authorizes capture or refund. Public capability metadata
+does not enable any rollout flag. Apply the additive checkout-request migration
+before a coordinated client/API release; legacy clients without identities are
+rejected rather than creating unprotected orders. Browser-storage failure is not
+consent and does not grant analytics permission. See the current M4 boundary.
+
 ## Money and conservation
 
 - Exact integer minor units internally; decimal strings in JSON; currency and exponent explicitly snapshotted. No automatic FX. SQL operation amounts are positive signed BIGINT values; API boundaries must reject overflow before writing.
@@ -40,9 +68,96 @@ Conservation: `11999 + 1001 = 13000`. The extra `1250` is NOT booked as a captur
 | Seller/affiliate payout (M3) | eligible allocation → reserved → evidenced paid / released | Exact immutable allocations; pay/reject races cannot affect unrelated credits. |
 | Refund (M4) | original capture/allocation → durable request → evidenced reversal/debt | Cancellation is not proof of refund, and refund is not restock evidence. |
 
-Refund shipping: full shop cancellation before handoff returns remaining customer-paid shipping. Partial/after handoff defaults to zero; explicit SUPER_ADMIN override requires amount, actor, reason and evidence, bounded by remaining collected shipping. The pure helper validates audit references and bounds; controller authorization remains required when integrated.
+Refund shipping: full shop cancellation before handoff returns remaining customer-paid shipping. Partial/after handoff defaults to zero; explicit SUPER_ADMIN override requires amount, actor, reason and evidence, bounded by remaining collected shipping. The final M4 integration enforces platform controller authorization, durable authenticated approval and independent SQL bounds. Approval references are not provider settlement proof.
+
+### Approved gift-wrap refund addendum — 2026-10-08
+
+Owner decision: “Chỉ hoàn phí gói quà khi super admin duyệt riêng”. This replaces
+the proposed automatic full-shop/pre-packing rule; it was not approved. No
+automatic gift-wrap refund on cancellation, returned merchandise or packing state.
+
+Each original-allocation refund selecting GIFT_WRAP requires explicit platform
+SUPER_ADMIN approval, a required reason and the authenticated actor. Store them
+immutably in `giftWrapApproval` with policy
+`2026-10-08.gift-wrap-explicit-approval.v1`. No caller-supplied actor, proof or
+discretionary refund amount is accepted. Bound it to the original collected
+gift-wrap allocation and remaining quantity (one charge per shop); a zero,
+missing or already refunded allocation cannot create an additional refund.
+Gift-wrap has no merchandise affiliate reversal. Preserve original seller/fee
+allocations, compensating journal, debt rules and payout evidence.
+
+The UI control is unchecked by default and separate from the two-step
+prepare/execute confirmations. Preparation is not refunded money. Completion
+still needs independent provider verification. SQL checks the frozen approval
+against the request actor/reason and rejects invented amounts or history.
+Normal merchandise plans retain their existing hashes/contracts. This is local,
+prospective implementation behind disabled gates, not activation or migration
+of financial history; unsupported tax-bearing refunds remain blocked.
+
+### Approved refund rounding addendum — 2026-10-08
+
+Refund plans snapshot `2026-10-08.platform-rounding.v1`; the original quote and
+its `2026-10-03.v1` policy are not rewritten. Independently reverse each original
+customer/funding/gross/net/fee-component/affiliate allocation using cumulative
+quantity floors. Never change the buyer refund or a beneficiary amount to force
+one partial refund to balance.
+
+For a partial item reversal, record signed differences in minor units:
+
+- Funding: customer + platform funding − seller gross (absolute bound 1).
+- Beneficiary: seller gross − seller net − total seller fee (absolute bound 1).
+- Fee: total seller fee − sum of original fee components (absolute bound
+  number of fee components − 1, minimum 0).
+- Platform rounding: sum of these three differences. Positive planned journal
+  entries are platform debits; negative entries are credits. No discretionary
+  amount or account substitution is allowed.
+
+Example: quantity 3, customer/seller gross 300, original seller net 298,
+transaction fee 1 and VAT 1. Three single-unit refunds preserve seller net
+99 + 99 + 100, both fees exactly 1, and customer 100 + 100 + 100. Separate
+platform rounding is +1, +1, −2; total is 0 when fully reversed. Grouped refunds
+must reach the same original totals. Affiliate shares retain the original
+largest-remainder split and original recipient, not current commission rules.
+
+The immutable request stores its plan, planned balanced journal and signed total.
+SQL independently verifies original components, bounded signed differences,
+affiliate allocation and exact journal identities, not just a zero total. This
+checkpoint **does not book an actual refund/expense, debit seller balances or
+change paid evidence**. Booking requires provider-verified completion and atomic
+debt/ledger integration. Tax-bearing, shipping/gift-wrap and arbitrary amount
+refunds remain fail-closed; listing fee policy is unchanged.
+
+Multi-session PostgreSQL verification is skipped for this iteration at the
+owner's request, not passed. Isolated PGlite SQL execution is not contention or
+Prisma/networked PostgreSQL proof and does not permit production activation.
 
 ## Inventory authority and recovery
+
+### Current M4 shipping and external-effect boundary (2026-10-08)
+
+The earlier dormant/preparation-only statements describe their dated checkpoints.
+Original customer-paid shipping refunds now require cancellation of the whole
+shop before handoff and complete original item refunds (including settled prior
+quantities). Tracking, parent shipment history and any legacy or versioned POD
+intent block the automatic rule. API and SQL verify eligibility independently.
+Platform shipping support is neither customer-paid shipping nor seller credit.
+Separate explicit SUPER_ADMIN gift-wrap approval is unchanged. The original
+approved shipping exception is now integrated for a positive exact amount on
+one original SHIPPING charge. Actor/reason/evidence and prior settled shipping
+are frozen; cumulative component floors cap reversal at original collected money.
+After a partial exception, another separate approval is required for the remainder;
+normal whole-charge refunds cannot refund it twice. Merchandise quantities remain
+independent. Tax-bearing/goodwill refunds remain unsupported and fail closed.
+
+Prospective external intents have frozen payloads and a one-way dispatch claim.
+Unknown POD results use independent original Printify resource reads, never a
+second POST. Current support is fully mapped unpersonalized LIVE Printify only;
+other providers and artwork remain manual. Creation proof cannot authorize a
+production/shipping status, cancellation write or actual-cost booking.
+Transactional notifications follow original lifecycle proof; TEST never contacts
+buyers. SMTP acknowledgement records acceptance, not inbox delivery, and timeout
+never resets a send for retry. Separate activation gates remain false. See
+`m4-implementation.md` for exact coverage and unperformed verification gates.
 
 - Quantity-varying enabled variants use `ProductVariant.quantity`, otherwise tracked products use `Product.quantity`; explicitly untracked products use UNLIMITED receipts. Null/negative quantities in a finite pool fail closed.
 - Snapshots persist pool kind, product/variant identifiers, grouped line IDs/quantities and original expiry. Retry does not extend expiry or switch pools after catalog edits. Default TTL 900 seconds, primitive accepts an explicit 1–86400-second value; platform-settings UI/wiring is not yet implemented.

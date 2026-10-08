@@ -2,7 +2,7 @@
   "extends": "./tsconfig.app.json",
   "compilerOptions": {
     "outDir": "../../dist/out-tsc",
-    "types": ["jest", "node", "multer", "express"]
+    "types": ["jest", "node", "multer", "express", "passport"]
   },
   "include": [
     "jest.config.ts",

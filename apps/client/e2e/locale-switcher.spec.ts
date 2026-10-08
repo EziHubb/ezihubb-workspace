@@ -32,6 +32,9 @@ test.describe('locale switching', () => {
   });
 
   test('keeps a checkout wizard on its completed step', async ({ page }) => {
+    await page.route('**/api/v1/orders/checkout-capabilities', route => route.fulfill({ json: { success: true, data: {
+      version: 'checkout-v1', onlinePaymentsAvailable: false, orderRequestsAvailable: true,
+    }, meta: {} } }));
     await page.route('**/api/v1/cart**', async (route) => {
       if (route.request().method() !== 'GET') return route.fallback();
       await route.fulfill({

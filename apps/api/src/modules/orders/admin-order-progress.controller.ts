@@ -103,7 +103,7 @@ export class AdminOrderProgressController {
   }
 
   @Get('orders/:storeOrderId/earnings')
-  @ApiOperation({ summary: "What this shop earned on this order, from its own ledger" })
+  @ApiOperation({ summary: 'Shop-only verified capture/refund allocations, or separately classified historical ledger' })
   async earnings(
     @Req() req: Request,
     @Param('storeOrderId') storeOrderId: string,

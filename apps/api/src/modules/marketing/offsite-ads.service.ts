@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { LEGACY_FINANCE_REPORT, legacyLedgerWhere, legacyStoreOrderWhere } from '../finances/finance-reporting-scope';
 
 @Injectable()
 export class OffsiteAdsService {
@@ -28,7 +29,7 @@ export class OffsiteAdsService {
         select: { source: true, productId: true, convertedAt: true, createdAt: true, orderId: true },
       }),
       this.prisma.sellerLedgerEntry.aggregate({
-        where: { storeId, type: 'OFFSITE_ADS_FEE', createdAt: createdAtWindow },
+        where: legacyLedgerWhere({ storeId, type: 'OFFSITE_ADS_FEE', createdAt: createdAtWindow }),
         _sum: { amount: true },
       }),
       this.prisma.storeLinkClick.groupBy({
@@ -45,7 +46,7 @@ export class OffsiteAdsService {
       // below against ad clicks logged on OTHER stores' pages ("indirect"
       // traffic: the ad pointed elsewhere, but the buyer ended up here).
       this.prisma.storeOrder.findMany({
-        where: { storeId, createdAt: createdAtWindow, visitorId: { not: null } },
+        where: legacyStoreOrderWhere({ storeId, createdAt: createdAtWindow, visitorId: { not: null } }),
         select: { id: true, orderId: true, subtotal: true, visitorId: true, order: { select: { userId: true } } },
       }),
     ]);
@@ -66,7 +67,7 @@ export class OffsiteAdsService {
     const directOrderIds = clicks.filter((c) => c.orderId).map((c) => c.orderId as string);
     const directStoreOrders = directOrderIds.length
       ? await this.prisma.storeOrder.findMany({
-          where: { orderId: { in: directOrderIds }, storeId },
+          where: legacyStoreOrderWhere({ orderId: { in: directOrderIds }, storeId }),
           select: { orderId: true, subtotal: true, order: { select: { userId: true } } },
         })
       : [];
@@ -95,6 +96,7 @@ export class OffsiteAdsService {
 
     return {
       offsiteAdsOptedOut: store.offsiteAdsOptedOut,
+      financeReporting: LEGACY_FINANCE_REPORT,
       totalFee:           Math.abs(Number(feeAgg._sum.amount ?? 0)),
       directClicks:       clicks.length,
       indirectClicks,
@@ -131,7 +133,7 @@ export class OffsiteAdsService {
   private async countFirstTimeBuyers(storeId: string, buyerIds: string[], since: Date): Promise<number> {
     if (buyerIds.length === 0) return 0;
     const priorBuyers = await this.prisma.storeOrder.findMany({
-      where: { storeId, createdAt: { lt: since }, order: { userId: { in: buyerIds } } },
+      where: legacyStoreOrderWhere({ storeId, createdAt: { lt: since }, order: { userId: { in: buyerIds } } }),
       select: { order: { select: { userId: true } } },
     });
     const priorBuyerSet = new Set(priorBuyers.map((o) => o.order.userId));

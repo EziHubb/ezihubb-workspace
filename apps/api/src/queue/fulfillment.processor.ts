@@ -79,6 +79,13 @@ export class FulfillmentProcessor extends WorkerHost {
 
   private async handlePushStoreOrder(job: Job<PushStoreOrderJobData>): Promise<void> {
     const { storeOrderId } = job.data;
+    const versioned=await this.prisma.storeOrder.findUnique({where:{id:storeOrderId},select:{order:{select:{economicContext:{select:{id:true}}}}}});
+    if(versioned?.order.economicContext) {
+      // BullMQ jobId is not provider idempotency after timeout/job removal.
+      // Versioned orders stay in the manual seller queue until a separately
+      // evidenced POD command/recovery adapter is available.
+      throw new UnrecoverableError('Versioned fulfillment requires durable provider dispatch; legacy push blocked');
+    }
 
     const storeOrder = await this.prisma.storeOrder.findUniqueOrThrow({
       where: { id: storeOrderId },

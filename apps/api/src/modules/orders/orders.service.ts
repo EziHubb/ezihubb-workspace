@@ -8,6 +8,8 @@ import {
 import { OrderProgressStepKind, OrderStatus, Prisma, ProductType, Promotion } from '@prisma/client';
 import { randomInt } from 'crypto';
 import { freezeCheckoutEconomics, requireEconomicCheckout } from '../finances/economic-checkout';
+import { economicTransaction } from '../finances/economic-balance';
+import { assertEconomicShopFulfillmentAllowed } from '../finances/economic-fulfillment-guard';
 import { parseMinorUnits } from '../finances/economic-policy';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -35,6 +37,7 @@ import { AnalyticsService } from '../analytics/analytics.service';
 import { BundleOffersService } from '../promotions/bundle-offers.service';
 import { LinkAttributionService } from '../marketing/link-attribution.service';
 import { CheckoutDto, CheckoutResponseDto } from './dto/checkout.dto';
+import { checkoutCartFingerprint, checkoutIdentity, checkoutPayloadHash, checkoutResponse, recoverCheckoutRequest } from './checkout-request';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { syncOrderStatusFromShops } from './order-status-sync';
 import { reverseCancelledOrderLedger } from './order-ledger-reversal';
@@ -211,6 +214,11 @@ export class OrdersService {
     sessionId?: string,
     cookies?: Record<string, string>,
   ): Promise<CheckoutResponseDto> {
+    const identity = checkoutIdentity(dto.idempotencyKey, userId, sessionId);
+    const payloadHash = checkoutPayloadHash(dto);
+    // Recover before reading an emptied cart or performing provider shipping I/O.
+    const recovered = await recoverCheckoutRequest(this.prisma, identity, payloadHash);
+    if (recovered) return recovered;
     if (this.onlinePaymentsEnabled) requireEconomicCheckout(dto.giftCardCode);
     if (!userId && !dto.guestEmail) {
       throw new BadRequestException({
@@ -559,8 +567,29 @@ export class OrdersService {
       : OrderStatus.CONFIRMED;
     const confirmedAt = this.onlinePaymentsEnabled ? undefined : new Date();
 
-    // $transaction: create order + items + status history + atomic coupon increment
-    const order = await this.prisma.$transaction(async (tx) => {
+    // DB-only, serializable and bounded retry: frozen order and original-pool
+    // inventory reservation either commit together or both roll back.
+    const response = await economicTransaction(this.prisma, async (tx) => {
+      // Concurrent retries serialize on the same original cart. Serializable
+      // conflicts restart DB-only work, never the provider shipping quotation.
+      await tx.$queryRaw`SELECT "id" FROM "Cart" WHERE "id"=${cart.id} FOR UPDATE`;
+      const retry = await recoverCheckoutRequest(tx, identity, payloadHash);
+      if (retry) return retry;
+      const lockedCart = await tx.cart.findUnique({ where: { id: cart.id }, select: { userId: true, sessionId: true, couponCode: true } });
+      if (!lockedCart || (userId ? lockedCart.userId !== userId : lockedCart.sessionId !== sessionId)
+        || lockedCart.couponCode !== cart.couponCode) throw new ConflictException('Cart ownership or coupon changed during checkout. Refresh the cart.');
+      const currentItems = await tx.cartItem.findMany({ where: { cartId: cart.id },
+        select: { id: true, productId: true, variantId: true, quantity: true, unitPrice: true,
+          customizationData: true, previewUrl: true, searchTerm: true, storeId: true } });
+      const cartFingerprint = checkoutCartFingerprint(cart.items);
+      if (!currentItems.length || checkoutCartFingerprint(currentItems) !== cartFingerprint) {
+        throw new ConflictException('Cart changed during checkout. Refresh the cart before submitting.');
+      }
+      // A new key cannot clone the same original basket, including the gap
+      // between verified capture and asynchronous cart cleanup. A genuinely
+      // new purchase needs new cart lines, not a replacement request key.
+      const existing = await tx.checkoutRequest.findFirst({ where: { cartId: cart.id, cartFingerprint, paymentRequired: true } });
+      if (existing) throw new ConflictException('This basket already has a checkout. Recover the original request or rebuild your cart for a new purchase.');
       const orderNumber = await this.generateOrderNumber(tx);
 
       const newOrder = await tx.order.create({
@@ -777,36 +806,27 @@ export class OrdersService {
       if (this.onlinePaymentsEnabled) {
         await freezeCheckoutEconomics(tx, newOrder.id, parseMinorUnits(giftWrappingCost.toFixed(2), 2));
       }
-      return newOrder;
+      const receipt = await tx.checkoutRequest.create({ data: { ...identity, payloadHash, cartId: cart.id, cartFingerprint,
+        orderId: newOrder.id, orderNumber: newOrder.orderNumber, paymentRequired: this.onlinePaymentsEnabled,
+        initialStatus, totalMinor: parseMinorUnits(total.toFixed(2), 2) } });
+      return checkoutResponse(receipt);
     });
 
     // Paid conversion/rewards belong to the verified-capture consumer, not checkout.
-    if (!this.onlinePaymentsEnabled) {
-      return {
-        orderId: order.id,
-        orderNumber: order.orderNumber,
-        clientSecret: null,
-        paymentRequired: false,
-        status: OrderStatus.CONFIRMED,
-        total,
-      };
-    }
+    return response;
+  }
 
-    // OUTSIDE transaction: create Stripe PaymentIntent
-    const paymentResponse =
-      await this.paymentsService.createPaymentIntentForOrder(
-        order.id,
-        dto.giftCardCode,
-      );
+  async recoverCheckout(key: string, userId?: string, sessionId?: string) {
+    const response = await recoverCheckoutRequest(this.prisma, checkoutIdentity(key, userId, sessionId));
+    if (!response) throw new NotFoundException('Checkout request has not been recorded yet. Retry the same request or contact support.');
+    return response;
+  }
 
-    return {
-      orderId:      order.id,
-      orderNumber:  order.orderNumber,
-      clientSecret: paymentResponse.clientSecret,
-      paymentRequired: true,
-      status: OrderStatus.PENDING_PAYMENT,
-      total,
-    };
+  checkoutCapabilities() {
+    const configured = process.env['ECONOMIC_V1_ENABLED'] === 'true'
+      && ['LIVE', 'TEST'].includes(process.env['ECONOMIC_V1_MODE'] ?? '');
+    return { version: 'checkout-v1', onlinePaymentsAvailable: this.onlinePaymentsEnabled && configured,
+      orderRequestsAvailable: !this.onlinePaymentsEnabled };
   }
 
   // ─── Customer Queries ─────────────────────────────────────────────────────
@@ -1123,7 +1143,11 @@ export class OrdersService {
           ? OrderProgressStepKind.DELIVERED
           : null;
 
-    const updated = await this.prisma.$transaction(async (tx) => {
+    let versioned = false;
+    const updated = await economicTransaction(this.prisma, async (tx) => {
+      const shops = await tx.storeOrder.findMany({ where: { orderId: id }, select: { id: true } });
+      versioned = await assertEconomicShopFulfillmentAllowed(tx, id, shops.map(shop => shop.id));
+      if (versioned && !progressKind) throw new BadRequestException('Versioned refund/payment statuses require verified economic workflows');
       await tx.order.update({
         where: { id },
         data: {
@@ -1165,7 +1189,7 @@ export class OrdersService {
       return tx.order.findUniqueOrThrow({ where: { id }, include: ORDER_INCLUDE });
     });
 
-    if (dto.status === OrderStatus.DELIVERED) {
+    if (!versioned && dto.status === OrderStatus.DELIVERED) {
       // Affiliate commission lock period
       if (order.affiliateId) {
         this.commissionService
@@ -1242,10 +1266,16 @@ export class OrdersService {
       dto.trackingUrl ?? this.trackingService.buildTrackingUrl(carrier, dto.trackingNumber);
 
     // Register EasyPost tracker — non-blocking; null if unconfigured
-    const trackerId = await this.trackingService.registerTracker(dto.trackingNumber, carrier);
+    const versioned = await economicTransaction(this.prisma, async tx => {
+      const shops = await tx.storeOrder.findMany({ where: { orderId: id, ...(storeId ? { storeId } : {}) }, select: { id: true } });
+      return assertEconomicShopFulfillmentAllowed(tx, id, shops.map(shop => shop.id));
+    });
+    const trackerId = versioned ? null : await this.trackingService.registerTracker(dto.trackingNumber, carrier);
 
     const now = new Date();
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const updated = await economicTransaction(this.prisma, async (tx) => {
+      const shops = await tx.storeOrder.findMany({ where: { orderId: id, ...(storeId ? { storeId } : {}) }, select: { id: true } });
+      await assertEconomicShopFulfillmentAllowed(tx, id, shops.map(shop => shop.id));
       await tx.order.update({
         where: { id },
         data: {
@@ -1303,6 +1333,8 @@ export class OrdersService {
 
       return tx.order.findUniqueOrThrow({ where: { id }, include: ORDER_INCLUDE });
     });
+
+    if (versioned) return this.mapToDto(updated);
 
     const email = order.guestEmail ?? order.user?.email;
     if (email) {

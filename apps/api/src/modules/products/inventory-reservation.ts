@@ -1,6 +1,7 @@
 import { EconomicInventoryReservation, Prisma, PrismaClient } from '@prisma/client';
 import { DEFAULT_STOCK_RESERVATION_TTL_SECONDS, ECONOMIC_POLICY_VERSION } from '../finances/economic-policy';
 import { inventoryPools } from './inventory-policy';
+import { economicTransaction } from '../finances/economic-balance';
 
 type Database = Pick<PrismaClient, '$transaction'>;
 const MAX_QUANTITY = 2147483647;
@@ -9,10 +10,17 @@ const MAX_QUANTITY = 2147483647;
 export async function reserveEconomicInventory(
   db: Database, contextId: string, now = new Date(), ttlSeconds = DEFAULT_STOCK_RESERVATION_TTL_SECONDS,
 ) {
+  if (!Number.isSafeInteger(ttlSeconds) || ttlSeconds <= 0 || ttlSeconds > 86400) throw new Error('Reservation TTL must be 1–86400 seconds');
+  return economicTransaction(db, tx => reserveEconomicInventoryInTransaction(tx, contextId, now, ttlSeconds));
+}
+
+/** Used in the prospective checkout transaction, never in manual requests. */
+export async function reserveEconomicInventoryInTransaction(tx: Prisma.TransactionClient, contextId: string,
+  now = new Date(), ttlSeconds = DEFAULT_STOCK_RESERVATION_TTL_SECONDS) {
   if (!Number.isSafeInteger(ttlSeconds) || ttlSeconds <= 0 || ttlSeconds > 86400) {
     throw new Error('Reservation TTL must be 1–86400 seconds');
   }
-  return db.$transaction(async tx => {
+    await tx.$queryRaw`SELECT "id" FROM "EconomicOrderContext" WHERE "id" = ${contextId} FOR UPDATE`;
     const context = await tx.economicOrderContext.findUniqueOrThrow({
       where: { id: contextId },
       include: { order: { include: { items: { include: {
@@ -53,7 +61,6 @@ export async function reserveEconomicInventory(
       if (changed.count !== 1) throw new Error('Insufficient inventory; reservation rolled back');
     }
     return tx.economicInventoryReservation.findMany({ where: { contextId }, orderBy: { poolKey: 'asc' } });
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
 /** Caller passes the capture/receipt transaction; consumption itself never debits stock again. */
@@ -89,7 +96,12 @@ async function restoreSnapshotPool(tx: Prisma.TransactionClient, reservation: Ec
 export async function releaseEconomicInventory(
   db: Database, contextId: string, reason: 'CANCELLED' | 'EXPIRED', now = new Date(),
 ) {
-  return db.$transaction(async tx => {
+  return economicTransaction(db, tx => releaseEconomicInventoryInTransaction(tx, contextId, reason, now));
+}
+
+export async function releaseEconomicInventoryInTransaction(tx: Prisma.TransactionClient, contextId: string,
+  reason: 'CANCELLED' | 'EXPIRED', now = new Date()) {
+    await tx.$queryRaw`SELECT "id" FROM "EconomicOrderContext" WHERE "id" = ${contextId} FOR UPDATE`;
     const rows = await tx.economicInventoryReservation.findMany({
       where: { contextId, state: 'HELD', ...(reason === 'EXPIRED' ? { expiresAt: { lte: now } } : {}) },
       orderBy: { poolKey: 'asc' },
@@ -101,5 +113,37 @@ export async function releaseEconomicInventory(
       });
       if (claimed.count === 1) await restoreSnapshotPool(tx, row);
     }
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+/** Verify/consume all snapshot pools atomically. A late capture cannot fulfill
+ * without re-debiting every released finite pool; no stock => whole rollback.
+ * Expired-but-still-HELD pools are consumed without a second debit. */
+export async function consumeCapturedInventory(tx: Prisma.TransactionClient, captureId: string, now = new Date()) {
+  const capture = await tx.economicCapture.findUniqueOrThrow({ where: { id: captureId }, include: { context: { include: { order: true } } } });
+  const contextId = capture.contextId;
+  await tx.$queryRaw`SELECT "id" FROM "EconomicOrderContext" WHERE "id" = ${contextId} FOR UPDATE`;
+  if (capture.context.policyVersion !== ECONOMIC_POLICY_VERSION || capture.context.order.adminArchivedAt
+    || ['CANCELLED','REFUNDED','REFUND_REQUESTED','DISPUTED'].includes(capture.context.order.status)) throw new Error('Captured order requires reconciliation before fulfillment');
+  const rows = await tx.economicInventoryReservation.findMany({ where: { contextId }, include: { reacquisition: true }, orderBy: { poolKey: 'asc' } });
+  if (!rows.length) throw new Error('Capture has no inventory reservation');
+  for (const row of rows) {
+    if (row.state === 'CONSUMED') continue;
+    if (row.reacquisition) {
+      if (row.reacquisition.captureId !== capture.id) throw new Error('Foreign inventory reacquisition');
+      continue;
+    }
+    if (row.state === 'HELD') {
+      const consumed = await tx.economicInventoryReservation.updateMany({ where: { id: row.id, state: 'HELD' }, data: { state: 'CONSUMED', consumedAt: now } });
+      if (consumed.count !== 1) throw new Error('Inventory changed; retry consumption');
+      continue;
+    }
+    if (!['EXPIRED','RELEASED'].includes(row.state)) throw new Error('Invalid released inventory state');
+    if (row.target !== 'UNLIMITED') {
+      const changed = row.target === 'VARIANT'
+        ? await tx.productVariant.updateMany({ where: { id: row.variantId ?? '', productId: row.productId, isAvailable: true, quantity: { gte: row.quantity } }, data: { quantity: { decrement: row.quantity } } })
+        : await tx.product.updateMany({ where: { id: row.productId, quantity: { gte: row.quantity } }, data: { quantity: { decrement: row.quantity } } });
+      if (changed.count !== 1) throw new Error('Late capture stock unavailable; reconciliation/refund required');
+    }
+    await tx.economicInventoryReacquisition.create({ data: { reservationId: row.id, captureId: capture.id, quantity: row.quantity } });
+  }
 }

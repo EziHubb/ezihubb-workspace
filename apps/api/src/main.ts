@@ -17,6 +17,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { RequestIdInterceptor } from './common/interceptors/request-id.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { getConfiguredOrigins, isWildcardOrigin, getAllowedOrigins } from './common/utils/allowed-origins.util';
+import { apiCorsOptions } from './common/utils/api-cors-options';
 import { AxiomLoggerService } from './common/services/axiom-logger.service';
 
 // ── MongoDB SRV resolution via DNS-over-HTTPS ─────────────────────────────────
@@ -133,46 +134,8 @@ async function bootstrap() {
   // credentials:true that is equivalent to no CORS protection at all, so it's only
   // tolerated outside production (and logged loudly either way).
   const allowAllOrigins = isWildcardOrigin(getConfiguredOrigins());
-  const nodeEnv = process.env.NODE_ENV ?? 'development';
-
-  if (allowAllOrigins && nodeEnv === 'production') {
-    throw new Error(
-      'CORS_ORIGINS="*" is not allowed in production — set it to an explicit comma-separated whitelist (see .env.example).',
-    );
-  }
-
   const allowedOrigins = getAllowedOrigins();
-
-  app.enableCors({
-    origin: allowAllOrigins
-      ? true
-      : (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-          // No Origin header (server-to-server, curl, same-origin) — allow.
-          if (!origin || allowedOrigins.has(origin)) {
-            callback(null, true);
-          } else {
-            // Reject without an Error: the `cors` package forwards a truthy
-            // first arg to Express's error chain, which this app has no
-            // handler for — it fell through to the generic 500 filter, so
-            // any request carrying an arbitrary Origin header (trivial to
-            // send outside a browser) crashed the API with ERR_INTERNAL
-            // instead of a normal, silent CORS rejection.
-            callback(null, false);
-          }
-        },
-    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-Session-ID', 'X-Store-Context', 'X-Locale'],
-    exposedHeaders: [
-      'X-Request-ID',
-      'X-RateLimit-Limit',
-      'X-RateLimit-Remaining',
-      'Retry-After',
-    ],
-    credentials: true,
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
-    maxAge: 86400,
-  });
+  app.enableCors(apiCorsOptions());
 
   Logger.log(
     allowAllOrigins

@@ -72,6 +72,7 @@ model EconomicOrderContext {
   events         EconomicOutbox[]
   reservations   EconomicInventoryReservation[]
   capture        EconomicCapture?
+  externalEffects EconomicExternalEffect[]
 
   @@unique([id, provenance, currency])
 }
@@ -98,6 +99,7 @@ model EconomicOperation {
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
   capture           EconomicCapture?
+  refundRequest     EconomicRefundRequest?
 
   @@unique([provider, providerAccount, provenance, kind, idempotencyKey], map: "EconomicOperation_request_identity_key")
   @@unique([provider, providerAccount, provenance, kind, providerReference], map: "EconomicOperation_provider_evidence_key")
@@ -121,6 +123,8 @@ model EconomicOutbox {
   publishedAt  DateTime?
   createdAt    DateTime              @default(now())
   receipts     EconomicConsumerReceipt[]
+  lifecycleRecovery EconomicLifecycleRecovery?
+  notificationReceipts EconomicNotificationReceipt[]
 
   @@index([state, availableAt, leaseUntil])
   @@index([contextId])
@@ -134,6 +138,60 @@ model EconomicConsumerReceipt {
   createdAt  DateTime        @default(now())
 
   @@unique([eventId, consumer])
+}
+
+// Separate audited DB-only recovery; the DEAD event and original attempt
+// counters remain terminal and immutable. Never authorizes provider redispatch.
+model EconomicLifecycleRecovery {
+  id          String @id @default(dbgenerated("nanoid(12)"))
+  eventId     String @unique
+  event       EconomicOutbox @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  actorId     String
+  reason      String @db.VarChar(500)
+  applied     Boolean
+  createdAt   DateTime @default(now())
+}
+
+// Prospective external dispatch identity, distinct from money operations.
+// Frozen recipient/shipping data is private; list APIs expose references only.
+// An ambiguous POST is never reset/retried. No legacy jobs or history backfill.
+model EconomicExternalEffect {
+  id                String @id @default(dbgenerated("nanoid(12)"))
+  contextId         String
+  context           EconomicOrderContext @relation(fields: [contextId], references: [id], onDelete: Restrict)
+  effectKey         String @unique @db.VarChar(64)
+  kind              String @db.VarChar(30)
+  storeOrderId      String?
+  connectionId      String?
+  providerAccount   String @db.VarChar(150)
+  sourceEventId     String?
+  payload           Json
+  payloadHash       String @db.VarChar(64)
+  requestedBy       String
+  reason            String @db.VarChar(500)
+  state             EconomicOperationState @default(PREPARED)
+  dispatchToken     String? @db.VarChar(64)
+  dispatchedAt      DateTime?
+  providerReference String? @db.VarChar(150)
+  evidenceHash      String? @db.VarChar(64)
+  completedAt       DateTime?
+  createdAt         DateTime @default(now())
+
+  @@unique([connectionId, providerReference])
+  @@index([state, createdAt])
+  @@index([contextId])
+}
+
+// Receipt survives deletion of an in-app notification; replay cannot recreate it.
+model EconomicNotificationReceipt {
+  id             String @id @default(dbgenerated("nanoid(12)"))
+  eventId        String
+  event          EconomicOutbox @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  recipientId    String
+  notificationId String @unique
+  createdAt      DateTime @default(now())
+
+  @@unique([eventId, recipientId])
 }
 
 model EconomicInventoryReservation {
@@ -153,10 +211,25 @@ model EconomicInventoryReservation {
   consumedAt     DateTime?
   releasedAt     DateTime?
   createdAt      DateTime                 @default(now())
+  reacquisition  EconomicInventoryReacquisition?
 
   @@unique([contextId, poolKey])
   @@index([state, expiresAt])
   @@index([productId])
+}
+
+// Original expired/released reservations stay immutable. Reacquisition is
+// separate capture-linked evidence, not a reset of the original TTL or state.
+model EconomicInventoryReacquisition {
+  id            String @id @default(dbgenerated("nanoid(12)"))
+  reservationId String @unique
+  reservation   EconomicInventoryReservation @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  captureId     String
+  capture       EconomicCapture @relation(fields: [captureId], references: [id], onDelete: Restrict)
+  quantity      Int
+  createdAt     DateTime @default(now())
+
+  @@index([captureId])
 }
 
 model EconomicCapture {
@@ -178,6 +251,8 @@ model EconomicCapture {
   allocations       EconomicCaptureAllocation[]
   journalEntries    EconomicJournalEntry[]
   balanceLots       EconomicBalanceLot[]
+  refundRequests    EconomicRefundRequest[]
+  reacquisitions    EconomicInventoryReacquisition[]
 
   @@unique([provider, providerAccount, provenance, providerReference], map: "EconomicCapture_provider_identity_key")
 }
@@ -207,6 +282,27 @@ model EconomicCaptureAllocation {
   @@index([storeOrderId])
 }
 
+// Immutable refund intent, not evidence that a provider refunded money.
+// Kept separate from capture and payout history; no cascade deletion.
+model EconomicRefundRequest {
+  id          String @id @default(dbgenerated("nanoid(12)"))
+  captureId   String
+  capture     EconomicCapture @relation(fields: [captureId], references: [id], onDelete: Restrict)
+  operationId String @unique
+  operation   EconomicOperation @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  requestedBy String
+  reason      String @db.VarChar(500)
+  // Original-allocation amounts are exact minor-unit strings, no PII/provider payload.
+  plan        Json
+  // Immutable planned journal, not financial completion evidence or spent money.
+  plannedJournal Json
+  platformRoundingMinor BigInt
+  createdAt   DateTime @default(now())
+  settlement  EconomicRefund?
+
+  @@index([captureId, createdAt])
+}
+
 enum EconomicJournalAccount {
   CUSTOMER_FUNDS
   PLATFORM_PROMOTION
@@ -215,6 +311,64 @@ enum EconomicJournalAccount {
   TAX_PAYABLE
   PLATFORM_AFFILIATE_COST
   AFFILIATE_PENDING
+  PLATFORM_ROUNDING
+}
+
+// Completed provider proof and compensating entries. Never rewrite the capture.
+model EconomicRefund {
+  id                String @id @default(dbgenerated("nanoid(12)"))
+  requestId         String @unique
+  request           EconomicRefundRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  providerReference String @db.VarChar(150)
+  evidenceHash      String @db.VarChar(64)
+  amountMinor       BigInt
+  verifiedBy        String
+  verifiedAt        DateTime
+  createdAt         DateTime @default(now())
+  journalEntries    EconomicRefundJournalEntry[]
+  reversals         EconomicRefundLotReversal[]
+}
+
+model EconomicRefundJournalEntry {
+  id            String @id @default(dbgenerated("nanoid(12)"))
+  refundId      String
+  refund        EconomicRefund @relation(fields: [refundId], references: [id], onDelete: Restrict)
+  entryKey      String @db.VarChar(220)
+  account       EconomicJournalAccount
+  beneficiaryId String?
+  currency      String @db.VarChar(3)
+  amountMinor   BigInt
+  createdAt     DateTime @default(now())
+
+  @@unique([refundId, entryKey])
+  @@index([account, beneficiaryId, currency])
+}
+
+model EconomicRefundLotReversal {
+  id             String @id @default(dbgenerated("nanoid(12)"))
+  refundId       String
+  refund         EconomicRefund @relation(fields: [refundId], references: [id], onDelete: Restrict)
+  lotId          String
+  lot            EconomicBalanceLot @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  amountMinor    BigInt
+  availableDebitMinor BigInt
+  debtMinor      BigInt
+  createdAt      DateTime @default(now())
+
+  @@unique([refundId, lotId])
+  @@index([lotId])
+}
+
+// Exact funds retained to recover prior evidenced refund debt, not a payout.
+model EconomicDebtRecovery {
+  id          String @id @default(dbgenerated("nanoid(12)"))
+  lotId       String
+  lot         EconomicBalanceLot @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  amountMinor BigInt
+  recoveredBy String
+  createdAt   DateTime @default(now())
+
+  @@index([lotId, createdAt])
 }
 
 model EconomicJournalEntry {
@@ -273,10 +427,14 @@ model EconomicBalanceLot {
   amountMinor    BigInt
   reservedMinor  BigInt @default(0)
   paidMinor      BigInt @default(0)
+  reversedMinor  BigInt @default(0)
+  debtRecoveredMinor BigInt @default(0)
   eligibleAt     DateTime?
   holdReason     String? @db.VarChar(500)
   createdAt      DateTime @default(now())
   payoutParts    EconomicPayoutAllocation[]
+  refundReversals EconomicRefundLotReversal[]
+  debtRecoveries EconomicDebtRecovery[]
 
   @@unique([captureId, sourceKey], map: "EconomicBalanceLot_source_key")
   @@index([accountId, eligibleAt])
@@ -1875,6 +2033,26 @@ model CartItem {
 }
 
 // ─── Order ───────────────────────────────────────────────────────────────────
+
+// Prospective checkout response receipt. Survives deletion of non-financial
+// test orders as a minimal tombstone: a retry must never recreate that order.
+// No customer/contact details, browser keys or provider secrets are stored here.
+model CheckoutRequest {
+  id              String      @id @default(dbgenerated("nanoid(12)"))
+  identityHash    String      @unique @db.VarChar(64)
+  scopeHash       String      @db.VarChar(64)
+  payloadHash     String      @db.VarChar(64)
+  cartId          String
+  cartFingerprint String      @db.VarChar(64)
+  orderId         String      @unique
+  orderNumber     String
+  paymentRequired Boolean
+  initialStatus   OrderStatus
+  totalMinor      BigInt
+  createdAt       DateTime    @default(now())
+
+  @@index([cartId, cartFingerprint])
+}
 
 model Order {
   id              String      @id @default(dbgenerated("nanoid(12)"))

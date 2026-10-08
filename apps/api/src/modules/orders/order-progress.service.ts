@@ -2,6 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { OrderProgressStepKind, OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { syncOrderStatusFromShops } from './order-status-sync';
+import { economicTransaction } from '../finances/economic-balance';
+import { assertEconomicShopFulfillmentAllowed } from '../finances/economic-fulfillment-guard';
 import type { OrderQueueQueryDto, QueueSort, QueueView, ShipByBucket } from './dto/order-queue.dto';
 import {
   CUSTOM_STEP_SORT_ORDER,
@@ -190,14 +192,18 @@ export class OrderProgressService {
 
     const removed = customExisting.filter((s) => !keptIds.has(s.id));
 
-    return this.prisma.$transaction(async (tx) => {
+    return economicTransaction(this.prisma, async (tx) => {
       const removedIds = removed.map((step) => step.id);
       const rehomed = removedIds.length
         ? await tx.storeOrder.findMany({
             where:  { storeId, progressStepId: { in: removedIds } },
-            select: { orderId: true },
+            select: { id: true, orderId: true },
           })
         : [];
+
+      for (const orderId of [...new Set(rehomed.map(row => row.orderId))].sort()) {
+        await assertEconomicShopFulfillmentAllowed(tx, orderId, rehomed.filter(row => row.orderId === orderId).map(row => row.id));
+      }
 
       // Rehome orders before the step under them disappears. They go back to
       // IN_PRODUCTION rather than to the nearest surviving neighbour: after a save that
@@ -272,7 +278,10 @@ export class OrderProgressService {
       ...(publicStatus === OrderStatus.DELIVERED ? { deliveredAt: new Date() } : {}),
     };
 
-    await this.prisma.$transaction(async (tx) => {
+    await economicTransaction(this.prisma, async (tx) => {
+      for (const orderId of [...new Set(owned.map(row => row.orderId))].sort()) {
+        await assertEconomicShopFulfillmentAllowed(tx, orderId, owned.filter(row => row.orderId === orderId).map(row => row.id));
+      }
       await tx.storeOrder.updateMany({ where: { id: { in: ids } }, data });
 
       await syncOrderStatusFromShops(tx, owned.map((o) => o.orderId));

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
@@ -23,6 +23,7 @@ import { useCurrency }              from '../../../../lib/currency/currency-cont
 import { fmtAmount, safeNum, safeArr } from '@ezihubb/utils';
 import { useAuthStore }             from '../../../../lib/store/auth.store';
 import { useLocaleTransitionState } from '../../../../lib/locale-transition';
+import { CHECKOUT_REQUEST_KEY, PENDING_CHECKOUT_KEY, readCheckoutReference, writeCheckoutReference, clearCheckoutReference } from '../../../../lib/checkout-recovery';
 
 // Keep payment-provider SDKs out of the active checkout bundle while the
 // server has online payments disabled. This chunk is only loaded if a future
@@ -47,6 +48,14 @@ interface CheckoutOrderResponse {
   paymentRequired: boolean;
   status:          string;
   total:           number;
+}
+
+interface CheckoutCapabilities { version: 'checkout-v1'; onlinePaymentsAvailable: boolean; orderRequestsAvailable: boolean }
+interface FrozenCheckout {
+  orderId: string; orderNumber: string; currency: 'USD'; amountMinor: string; minorExponent: 2;
+  total: number; status: string; paymentStatus: 'VERIFIED' | 'PENDING' | 'CLOSED'; canContinue: boolean;
+  boundProvider: 'STRIPE' | 'PAYPAL' | null;
+  items: { id: string; productName: string; variantName: string | null; quantity: number }[];
 }
 
 // ── Sidebar: order summary ────────────────────────────────────────────────────
@@ -238,12 +247,140 @@ export default function CheckoutPage() {
     isGift: false, giftMessage: '', giftReceipt: false, giftWrapping: false, giftFrom: '',
   });
 
+  // Keep the already-created order when navigating steps or changing locale.
+  const [clientSecret, setClientSecret] = useState('');
+  const [paymentRequired, setPaymentRequired] = useState(false);
+  const [orderId, setOrderId] = useState('');
+  const [orderNumber, setOrderNumber] = useState('');
+  const [orderTotal, setOrderTotal] = useState(0);
+  const [pendingOrderId, setPendingOrderId] = useState('');
+  const [frozenOrder, setFrozenOrder] = useState<FrozenCheckout | null>(null);
+  const [recoveryState, setRecoveryState] = useState<'loading' | 'none' | 'ready' | 'error'>('loading');
+  const [recoveryError, setRecoveryError] = useState('');
+  const [recoveryAttempt, setRecoveryAttempt] = useState(0);
+  const [awaitingCapture, setAwaitingCapture] = useState(false);
+  const [creationKey, setCreationKey] = useState('');
+  const [capabilities, setCapabilities] = useState<CheckoutCapabilities | null>(null);
+  const [capabilityError, setCapabilityError] = useState('');
+  const [capabilityAttempt, setCapabilityAttempt] = useState(0);
+  const submitting = useRef(false);
+  const submission = useRef<Record<string, unknown> | null>(null);
+  const submissionActor = useRef('');
+  const vi = locale === 'vi';
+
+  const acceptOrder = useCallback((res: CheckoutOrderResponse) => {
+    if (!res || !/^[A-Za-z0-9_-]{1,100}$/.test(res.orderId) || !res.orderNumber
+      || !Number.isFinite(res.total) || res.total < 0 || res.total > 99_999_999.99
+      || typeof res.paymentRequired !== 'boolean'
+      || res.status !== (res.paymentRequired ? 'PENDING_PAYMENT' : 'CONFIRMED')) {
+      throw new Error('Invalid original checkout response. Contact support before submitting another order.');
+    }
+    setOrderId(res.orderId); setOrderNumber(res.orderNumber); setOrderTotal(res.total);
+    if (res.paymentRequired) {
+      writeCheckoutReference(PENDING_CHECKOUT_KEY, res.orderId);
+      setPendingOrderId(res.orderId); setRecoveryState('loading');
+      setPaymentRequired(true); setClientSecret('');
+    } else {
+      clearCheckoutReference(CHECKOUT_REQUEST_KEY);
+      submission.current = null;
+      clearCart();
+      const guestParam = !isLoggedIn && guestEmail ? `&email=${encodeURIComponent(guestEmail)}` : '';
+      router.replace(`/${locale}/checkout/success?order=${encodeURIComponent(res.orderNumber)}${guestParam}&mode=request`);
+    }
+  }, [clearCart, locale, router, isLoggedIn, guestEmail]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setCapabilities(null); setCapabilityError('');
+    apiClient.get<CheckoutCapabilities>('/orders/checkout-capabilities').then(value => {
+      if (value.version !== 'checkout-v1' || typeof value.onlinePaymentsAvailable !== 'boolean'
+        || typeof value.orderRequestsAvailable !== 'boolean') throw new Error('Invalid checkout availability');
+      if (!cancelled) setCapabilities(value);
+    }).catch(() => { if (!cancelled) setCapabilityError(vi ? 'Không thể kiểm tra trạng thái đặt hàng. Vui lòng thử lại.' : 'Unable to check checkout availability. Please retry.'); });
+    return () => { cancelled = true; };
+  }, [capabilityAttempt, vi]);
+
+  useEffect(() => {
+    try {
+      // Only an opaque reference is persisted. Contact details, amounts,
+      // addresses, credentials and provider secrets never enter storage.
+      const reference = readCheckoutReference(PENDING_CHECKOUT_KEY);
+      const key = readCheckoutReference(CHECKOUT_REQUEST_KEY);
+      if (key && !/^[A-Za-z0-9_-]{12,80}$/.test(key)) throw new Error('Invalid checkout request identity');
+      setCreationKey(key ?? '');
+      setPendingOrderId(reference ?? '');
+      setRecoveryState(reference || key ? 'loading' : 'none');
+    } catch {
+      setRecoveryError(vi ? 'Không thể khôi phục đơn đang chờ. Vui lòng liên hệ hỗ trợ.' : 'Unable to restore pending checkout. Please contact support.');
+      setRecoveryState('error');
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!creationKey || pendingOrderId || !isAuthReady) return;
+    let cancelled = false;
+    setRecoveryState('loading'); setRecoveryError('');
+    apiClient.get<CheckoutOrderResponse>(`/orders/checkout-requests/${encodeURIComponent(creationKey)}`)
+      .then(result => { if (!cancelled) acceptOrder(result); })
+      .catch(failure => {
+        if (cancelled) return;
+        setRecoveryError(failure instanceof Error ? failure.message : t('errors.createOrderFailed'));
+        setRecoveryState('error');
+      });
+    return () => { cancelled = true; };
+  }, [creationKey, pendingOrderId, isAuthReady, recoveryAttempt, acceptOrder, t]);
+
+  useEffect(() => {
+    if (!pendingOrderId || !isAuthReady) return;
+    let cancelled = false;
+    setRecoveryState('loading');
+    setRecoveryError('');
+    apiClient.get<FrozenCheckout>(`/payments/checkout/${encodeURIComponent(pendingOrderId)}`).then(result => {
+      if (cancelled) return;
+      if (result.orderId !== pendingOrderId || result.currency !== 'USD' || result.minorExponent !== 2
+        || !/^\d{1,8}$/.test(result.amountMinor) || BigInt(result.amountMinor) > BigInt(99_999_999)
+        || result.total !== Number(result.amountMinor) / 100 || !Array.isArray(result.items)
+        || !['VERIFIED', 'PENDING', 'CLOSED'].includes(result.paymentStatus)
+        || ![null, 'STRIPE', 'PAYPAL'].includes(result.boundProvider)) throw new Error('Invalid checkout recovery response');
+      if (result.paymentStatus === 'CLOSED' || ['CANCELLED', 'REFUND_REQUESTED', 'REFUNDED', 'DISPUTED'].includes(result.status)) {
+        throw new Error(vi ? `Đơn ${result.orderNumber} đã đóng hoặc cần hỗ trợ. Không thực hiện thanh toán lại.`
+          : `Order ${result.orderNumber} is closed or requires support. Do not pay again.`);
+      }
+      if (result.paymentStatus === 'VERIFIED') {
+        clearCheckoutReference(PENDING_CHECKOUT_KEY);
+        clearCheckoutReference(CHECKOUT_REQUEST_KEY);
+        clearCheckoutReference(`economic-payment-method:${pendingOrderId}`);
+        clearCart();
+        router.replace(`/${locale}/checkout/success?order=${encodeURIComponent(result.orderNumber)}`);
+        return;
+      }
+      if (!result.canContinue) throw new Error(vi ? 'Đơn này không còn mở để thanh toán. Vui lòng liên hệ hỗ trợ với mã đơn hàng.'
+        : 'This order is no longer open for payment. Contact support with your order number.');
+      setFrozenOrder(result);
+      setOrderNumber(result.orderNumber);
+      setOrderTotal(result.total);
+      setRecoveryState('ready');
+    }).catch(failure => {
+      if (cancelled) return;
+      setRecoveryError(failure instanceof Error ? failure.message : t('errors.createOrderFailed'));
+      setRecoveryState('error');
+    });
+    return () => { cancelled = true; };
+  }, [pendingOrderId, isAuthReady, recoveryAttempt, locale, vi, router, clearCart, t]);
+
+  useEffect(() => {
+    if (!awaitingCapture || recoveryState !== 'ready' || recoveryAttempt >= 12) return;
+    const timer = setTimeout(() => setRecoveryAttempt(value => value + 1), 2500);
+    return () => clearTimeout(timer);
+  }, [awaitingCapture, recoveryState, recoveryAttempt]);
+
   // Most storefront UI is restored generically from its DOM. A checkout
   // wizard also has calculated state that is not mounted in the current step,
   // so register that non-DOM portion with the shared locale transition layer.
   useLocaleTransitionState(
     'checkout',
-    { step, completedSteps, shippingAddress, guestEmail, shippingEstimate, giftOptions },
+    { step, completedSteps, shippingAddress, guestEmail, shippingEstimate, giftOptions,
+      clientSecret, paymentRequired, orderId, orderNumber, orderTotal },
     (draft) => {
       setStep(draft.step);
       setCompletedSteps(draft.completedSteps);
@@ -251,6 +388,11 @@ export default function CheckoutPage() {
       setGuestEmail(draft.guestEmail);
       setShippingEstimate(draft.shippingEstimate);
       setGiftOptions(draft.giftOptions);
+      setClientSecret(draft.clientSecret);
+      setPaymentRequired(draft.paymentRequired);
+      setOrderId(draft.orderId);
+      setOrderNumber(draft.orderNumber);
+      setOrderTotal(draft.orderTotal);
     },
   );
 
@@ -292,19 +434,28 @@ export default function CheckoutPage() {
   }, [cart?.totals?.subtotal, cart?.discountAmount, affiliateInfo?.code]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Order creation state. The server decides whether payment is required.
-  const [clientSecret,    setClientSecret]    = useState('');
-  const [orderId,         setOrderId]         = useState('');
-  const [orderNumber,     setOrderNumber]     = useState('');
-  const [orderTotal,      setOrderTotal]      = useState(0);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [orderError,      setOrderError]      = useState('');
 
+  const retrySubmission = async () => {
+    if (!submission.current || submitting.current) return;
+    if (!isAuthReady || submissionActor.current !== (isLoggedIn ? authUser?.id : 'guest')) {
+      setRecoveryError(vi ? 'Tài khoản đã thay đổi. Hãy khôi phục phiên đặt hàng ban đầu hoặc liên hệ hỗ trợ; không gửi yêu cầu thay thế.'
+        : 'Your account changed. Restore the original checkout session or contact support; do not submit a replacement request.');
+      return;
+    }
+    submitting.current = true; setIsCreatingOrder(true);
+    try { acceptOrder(await apiClient.post<CheckoutOrderResponse>(API_ROUTES.ORDERS.CREATE, submission.current)); }
+    catch (failure) { setRecoveryError(failure instanceof Error ? failure.message : t('errors.createOrderFailed')); }
+    finally { submitting.current = false; setIsCreatingOrder(false); }
+  };
+
   // ── Cart empty guard ───────────────────────────────────────────────────────
   useEffect(() => {
-    if (!isLoading && cart && safeArr(cart.items).length === 0) {
+    if (recoveryState === 'none' && !isLoading && cart && safeArr(cart.items).length === 0) {
       router.replace(`/${locale}/cart`);
     }
-  }, [cart, isLoading, router, locale]);
+  }, [cart, isLoading, router, locale, recoveryState]);
 
   // ── Digital-only cart: no shipping address/method needed at all ───────────
   // (mixed carts are rejected by checkout() server-side and warned about on
@@ -330,7 +481,86 @@ export default function CheckoutPage() {
     prepareDigitalOrder();
   }, [isDigitalOnly, isLoggedIn, step, prepareDigitalOrder]);
 
-  if (isLoading || !cart || safeArr(cart.items).length === 0) {
+  if (recoveryState === 'error') {
+    return <main className="mx-auto max-w-xl px-4 py-12 space-y-5">
+      <h1 className="text-2xl font-semibold">{t('title')}</h1>
+      <p role="alert" className="rounded-card border border-error/25 p-4 text-error">{recoveryError}</p>
+      {pendingOrderId && <p className="break-all text-sm text-muted">{vi ? 'Mã tham chiếu' : 'Order reference'}: {pendingOrderId}</p>}
+      <p className="text-sm text-muted">{vi ? 'Không tạo đơn mới hoặc thanh toán lại khi chưa xác nhận trạng thái đơn cũ.' : 'Do not create another order or pay again until the original request is confirmed.'}</p>
+      <button type="button" onClick={() => setRecoveryAttempt(value => value + 1)} disabled={(!pendingOrderId && !creationKey) || isCreatingOrder}
+        className="min-h-11 rounded-button bg-primary px-5 py-3 text-white disabled:opacity-50 focus-visible:outline focus-visible:outline-2">
+        {vi ? 'Thử khôi phục lại đơn' : 'Retry order recovery'}
+      </button>
+      {!pendingOrderId && submission.current && <button type="button" onClick={retrySubmission} disabled={isCreatingOrder}
+        className="min-h-11 rounded-button border border-border px-5 py-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2">
+        {vi ? 'Gửi lại cùng yêu cầu' : 'Retry the same order request'}
+      </button>}
+    </main>;
+  }
+
+  if (recoveryState === 'ready' && frozenOrder) {
+    return <main className="mx-auto max-w-[1200px] px-4 py-8 md:px-8">
+      <h1 className="mb-6 text-2xl font-semibold">{t('stepHeadings.payment')}</h1>
+      <div className="grid gap-8 md:grid-cols-[1fr_360px]">
+        <section className="min-w-0 space-y-5" data-hj-suppress>
+          <div role="note" className="rounded-card border border-border p-4 text-sm">
+            <p className="font-semibold">{frozenOrder.orderNumber}</p>
+            <p className="mt-2">{vi ? 'Đơn và số tiền đã được chốt. Quay lại giỏ hàng không sửa đơn này. Khi quay lại checkout, bạn sẽ tiếp tục cùng đơn và phương thức đã chọn.'
+              : 'This order and its amount are frozen. Returning to your cart does not edit this order. Checkout resumes the same order and selected method.'}</p>
+          </div>
+          {awaitingCapture ? <div role="status" className="rounded-card border border-border p-4 space-y-3">
+            <p>{vi ? 'Đang chờ xác nhận thanh toán từ server. Không cần thanh toán lại.' : 'Waiting for server payment confirmation. Do not pay again.'}</p>
+            <button type="button" onClick={() => setRecoveryAttempt(value => value + 1)}
+              className="min-h-11 rounded-button border border-border px-4 py-2 focus-visible:outline focus-visible:outline-2">
+              {vi ? 'Kiểm tra lại trạng thái' : 'Check payment status'}
+            </button>
+          </div> : !capabilities?.onlinePaymentsAvailable ? <div role="status" className="rounded-card border border-border p-4 space-y-3">
+            <p>{vi ? 'Thanh toán trực tuyến hiện chưa khả dụng. Đơn gốc được giữ lại; vui lòng liên hệ hỗ trợ, không tạo đơn hoặc thanh toán lại.' : 'Online payments are currently unavailable. Your original order is retained. Contact support; do not create another order or pay again.'}</p>
+            <button type="button" onClick={() => setCapabilityAttempt(value => value + 1)} className="min-h-11 rounded-button border border-border px-4 py-2">
+              {vi ? 'Kiểm tra lại' : 'Check availability'}
+            </button>
+          </div> : <PaymentForm key={frozenOrder.orderId} clientSecret="" orderId={frozenOrder.orderId}
+            orderNumber={frozenOrder.orderNumber} totalAmount={frozenOrder.total} locale={locale}
+            boundProvider={frozenOrder.boundProvider}
+            onBack={() => router.push(`/${locale}/cart`)}
+            onSuccess={number => {
+              // Keep the reference until independent server capture proof is
+              // visible, including webhook delay and a page reload.
+              if (number === frozenOrder.orderNumber) {
+                setAwaitingCapture(true);
+                setRecoveryAttempt(value => value + 1);
+              }
+            }} />}
+          <button type="button" onClick={() => router.push(`/${locale}/cart`)}
+            className="min-h-11 rounded-button border border-border px-5 py-3 text-sm focus-visible:outline focus-visible:outline-2">
+            {vi ? 'Quay lại giỏ hàng' : 'Back to cart'}
+          </button>
+        </section>
+        <aside aria-label={t('orderSummary.title')} className="h-fit min-w-0 rounded-card border border-border p-5">
+          <h2 className="mb-4 font-semibold">{t('orderSummary.title')}</h2>
+          <ul className="space-y-3">{frozenOrder.items.map(item => <li key={item.id} className="text-sm">
+            <p className="break-words font-medium">{item.productName}</p>
+            <p className="text-muted">{item.variantName} · {vi ? 'Số lượng' : 'Quantity'}: {item.quantity}</p>
+          </li>)}</ul>
+          <div className="mt-4 flex justify-between gap-4 border-t border-border pt-4 font-semibold">
+            <span>{t('orderSummary.total')}</span><span className="tabular-nums">{fmtAmount(frozenOrder.total)}</span>
+          </div>
+        </aside>
+      </div>
+    </main>;
+  }
+
+  if (capabilityError || (capabilities && !capabilities.onlinePaymentsAvailable && !capabilities.orderRequestsAvailable)) {
+    return <main className="mx-auto max-w-xl px-4 py-12 space-y-5">
+      <h1 className="text-2xl font-semibold">{t('title')}</h1>
+      <p role="alert">{capabilityError || (vi ? 'Đặt hàng hiện tạm ngưng. Vui lòng liên hệ hỗ trợ.' : 'Checkout is temporarily unavailable. Please contact support.')}</p>
+      <button type="button" onClick={() => setCapabilityAttempt(value => value + 1)} className="min-h-11 rounded-button border border-border px-5 py-3">
+        {vi ? 'Thử lại' : 'Retry checkout availability'}
+      </button>
+    </main>;
+  }
+
+  if (!capabilities || recoveryState === 'loading' || isLoading || !cart || safeArr(cart.items).length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -372,11 +602,18 @@ export default function CheckoutPage() {
   };
 
   const handleSubmitOrder = async () => {
+    if (submitting.current || !capabilities) return;
+    if (paymentRequired && orderId) { setStep(3); return; }
     if (!cart || (!isDigitalOnly && (!shippingAddress || !shippingEstimate))) return;
+    submitting.current = true;
     setIsCreatingOrder(true);
     setOrderError('');
     try {
-      const res = await apiClient.post<CheckoutOrderResponse>(API_ROUTES.ORDERS.CREATE, {
+      const key = crypto.randomUUID();
+      const persisted = writeCheckoutReference(CHECKOUT_REQUEST_KEY, key);
+      if (capabilities.onlinePaymentsAvailable && !persisted) throw new Error(vi ? 'Cần bật cookie hoặc lưu trữ phiên để khôi phục thanh toán an toàn.' : 'Enable cookies or session storage to safely resume online checkout.');
+      const body = {
+        idempotencyKey: key,
         ...(shippingAddress ? { shippingAddress: {
           fullName:     `${shippingAddress.firstName} ${shippingAddress.lastName}`.trim(),
           phone:         shippingAddress.phone,
@@ -394,27 +631,18 @@ export default function CheckoutPage() {
         giftFrom:         giftOptions.isGift ? giftOptions.giftFrom || undefined : undefined,
         giftReceipt:      giftOptions.giftReceipt,
         giftWrapping:     giftOptions.giftWrapping,
-        // Cookie is also read server-side from req.cookies — this is a fallback
-        affiliateCode:    affiliateInfo?.code,
-      });
-
-      setOrderId(res.orderId);
-      setOrderNumber(res.orderNumber);
-      setOrderTotal(safeNum(res.total));
-      if (res.paymentRequired && res.clientSecret) {
-        setClientSecret(res.clientSecret);
-        hotjarEvent('checkout_step_payment');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-      }
-
-      hotjarEvent('order_request_submitted');
-      clearCart();
-      const guestParam = !isLoggedIn && guestEmail ? `&email=${encodeURIComponent(guestEmail)}` : '';
-      router.push(`/${locale}/checkout/success?order=${res.orderNumber}${guestParam}&mode=request`);
+      };
+      submission.current = body;
+      submissionActor.current = isLoggedIn ? authUser?.id ?? '' : 'guest';
+      const res = await apiClient.post<CheckoutOrderResponse>(API_ROUTES.ORDERS.CREATE, body);
+      acceptOrder(res);
     } catch (err) {
-      setOrderError(err instanceof Error ? err.message : t('errors.createOrderFailed'));
+      if (submission.current) {
+        setCreationKey(String(submission.current.idempotencyKey));
+        setRecoveryState('loading');
+      } else setOrderError(err instanceof Error ? err.message : t('errors.createOrderFailed'));
     } finally {
+      submitting.current = false;
       setIsCreatingOrder(false);
     }
   };
@@ -484,7 +712,7 @@ export default function CheckoutPage() {
 
             {/* Step 1: Shipping address (physical) / Contact email (digital-only) */}
             {step === 1 && (
-              <section aria-labelledby="step1-heading">
+              <section aria-labelledby={isDigitalOnly ? 'digital-contact-heading' : 'shipping-address-heading'}>
                 {isDigitalOnly ? (
                   isLoggedIn ? (
                     <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted">
@@ -493,7 +721,7 @@ export default function CheckoutPage() {
                     </div>
                   ) : (
                     <>
-                      <h2 id="step1-heading" className="text-base font-semibold text-secondary mb-5">
+                      <h2 id="digital-contact-heading" className="text-base font-semibold text-secondary mb-5">
                         {t('stepHeadings.contactInformation')}
                       </h2>
                       <DigitalContactForm
@@ -506,7 +734,7 @@ export default function CheckoutPage() {
                   )
                 ) : (
                   <>
-                    <h2 id="step1-heading" className="text-base font-semibold text-secondary mb-5">
+                    <h2 id="shipping-address-heading" className="text-base font-semibold text-secondary mb-5">
                       {t('stepHeadings.shippingInformation')}
                     </h2>
                     <ShippingForm
@@ -552,9 +780,9 @@ export default function CheckoutPage() {
             {step === 3 && (isDigitalOnly || (shippingAddress && shippingEstimate)) && (
               <section aria-labelledby="step3-heading" data-hj-suppress>
                 <h2 id="step3-heading" className="text-base font-semibold text-secondary mb-5">
-                  {clientSecret ? t('stepHeadings.payment') : t('stepHeadings.reviewRequest')}
+                  {paymentRequired ? t('stepHeadings.payment') : t('stepHeadings.reviewRequest')}
                 </h2>
-                {clientSecret ? (
+                {paymentRequired ? (
                   <PaymentForm
                     clientSecret={clientSecret}
                     orderId={orderId}
@@ -562,7 +790,7 @@ export default function CheckoutPage() {
                     totalAmount={orderTotal}
                     locale={locale}
                     onSuccess={handlePaymentSuccess}
-                    onBack={() => setStep(isDigitalOnly ? 1 : 2)}
+                    onBack={() => router.push(`/${locale}/cart`)}
                   />
                 ) : (
                   <div className="space-y-5">

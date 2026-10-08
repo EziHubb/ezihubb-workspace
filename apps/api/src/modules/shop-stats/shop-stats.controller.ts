@@ -73,11 +73,14 @@ export class ShopStatsController {
 
   @Get('listings/:productId')
   @ApiOperation({ summary: 'Individual listing detailed stats with time series' })
-  getListingStats(
+  async getListingStats(
+    @Req() req: Request,
     @Param('productId') productId: string,
     @Query('range')     range = '30d',
+    @Query('storeId') storeId?: string,
   ) {
-    return this.statsService.getListingStats(productId, range);
+    const context = await this.storeContext.resolve(req);
+    return this.statsService.getListingStats(productId, range, this.targetStoreId(context, storeId) ?? undefined);
   }
 
   @Get('search-terms')

@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { EconomicOutbox, EconomicProvenance, Prisma, PrismaClient } from '@prisma/client';
 import { ECONOMIC_POLICY_VERSION } from './economic-policy';
+import { economicTransaction } from './economic-balance';
 
 // Deliberately not registered in a Nest module or scheduler. No provider calls.
 // Callers must activate a coordinated versioned producer/reader/consumer chain.
@@ -70,9 +71,9 @@ export async function markEconomicOperationAmbiguous(db: Database, id: string, t
 }
 
 /** Read provider evidence for these operations; do not create a fresh request. */
-export async function quarantineExpiredOperations(db: Database, now = new Date()) {
+export async function quarantineExpiredOperations(db: Database, now = new Date(), provenance?: EconomicProvenance) {
   return db.economicOperation.updateMany({
-    where: { state: 'DISPATCHED', reconcileAfter: { lte: now } },
+    where: { state: 'DISPATCHED', reconcileAfter: { lte: now }, ...(provenance ? { provenance } : {}) },
     data: { state: 'NEEDS_RECONCILIATION' },
   });
 }
@@ -107,8 +108,9 @@ export async function appendEconomicEvent(tx: Prisma.TransactionClient, input: E
   return existing;
 }
 
-export async function claimEconomicEvent(db: Database, now = new Date()) {
+export async function claimEconomicEvent(db: Database, now = new Date(), provenance?: EconomicProvenance) {
   const eligible: Prisma.EconomicOutboxWhereInput = {
+    ...(provenance ? { context: { provenance } } : {}),
     attempts: { lt: MAX_OUTBOX_ATTEMPTS },
     OR: [
       { state: 'PENDING', availableAt: { lte: now } },
@@ -133,7 +135,7 @@ export async function claimEconomicEvent(db: Database, now = new Date()) {
 export async function finishEconomicEvent(
   db: Database, id: string, leaseToken: string, published: boolean, now = new Date(),
 ) {
-  return db.$transaction(async tx => {
+  return economicTransaction(db, async tx => {
     const event = await tx.economicOutbox.findUniqueOrThrow({ where: { id } });
     return tx.economicOutbox.updateMany({
       where: { id, state: 'CLAIMED', leaseToken, leaseUntil: { gt: now } },
@@ -147,9 +149,9 @@ export async function finishEconomicEvent(
 }
 
 /** Last-attempt worker death must not leave an unclaimable row forever. */
-export async function quarantineExhaustedEvents(db: Database, now = new Date()) {
+export async function quarantineExhaustedEvents(db: Database, now = new Date(), provenance?: EconomicProvenance) {
   return db.economicOutbox.updateMany({
-    where: { state: 'CLAIMED', attempts: { gte: MAX_OUTBOX_ATTEMPTS }, leaseUntil: { lte: now } },
+    where: { state: 'CLAIMED', attempts: { gte: MAX_OUTBOX_ATTEMPTS }, leaseUntil: { lte: now }, ...(provenance ? { context: { provenance } } : {}) },
     data: { state: 'DEAD', leaseToken: null, leaseUntil: null },
   });
 }
@@ -165,7 +167,7 @@ export async function consumeEconomicEvent(
   effect: (tx: Prisma.TransactionClient, event: EconomicOutbox) => Promise<void>,
 ): Promise<boolean> {
   requireText(consumer, 80);
-  return db.$transaction(async tx => {
+  return economicTransaction(db, async tx => {
     const event = await tx.economicOutbox.findUniqueOrThrow({
       where: { id: eventId }, include: { context: true },
     });

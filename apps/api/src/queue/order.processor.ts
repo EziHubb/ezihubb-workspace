@@ -30,6 +30,13 @@ export class OrderProcessor extends WorkerHost {
   }
 
   async process(job: Job): Promise<void> {
+    // Never replay legacy paid effects for a versioned context. Those are
+    // committed by capture/refund consumers with DB receipts, not Redis TTLs.
+    const orderId=(job.data as {orderId?:unknown})?.orderId;
+    if(typeof orderId==='string' && await this.prisma.economicOrderContext.findUnique({where:{orderId}})) {
+      this.logger.warn(`Legacy order job suppressed for economic context: ${orderId}`);
+      return;
+    }
     switch (job.name) {
       case JOBS.ORDER_CONFIRMED:
         await this.handleOrderConfirmed(job as Job<OrderIdJobData>);
@@ -196,6 +203,7 @@ export class OrderProcessor extends WorkerHost {
     const orders = await this.prisma.order.findMany({
       where: {
         status: 'DELIVERED',
+        economicContext: { is: null },
         deliveredAt: { lte: sevenDaysAgo },
       },
       include: {
@@ -251,6 +259,7 @@ export class OrderProcessor extends WorkerHost {
     const { count } = await this.prisma.order.updateMany({
       where: {
         status: 'DELIVERED',
+        economicContext: { is: null },
         deliveredAt: { lte: sevenDaysAgo },
       },
       data: { status: 'COMPLETED' },

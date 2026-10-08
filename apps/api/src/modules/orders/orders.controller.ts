@@ -42,6 +42,17 @@ export class OrdersController {
     return this.ordersService.checkout(dto, user?.sub, sessionId, cookies);
   }
 
+  @Get('checkout-capabilities')
+  @ApiOperation({ summary: 'Public checkout capabilities; never provider credentials' })
+  checkoutCapabilities() { return this.ordersService.checkoutCapabilities(); }
+
+  @Get('checkout-requests/:key')
+  @UseGuards(OptionalAuthGuard)
+  @ApiOperation({ summary: 'Recover original checkout response for this account/cart session' })
+  recoverCheckout(@Param('key') key: string, @CurrentUser() user: JwtPayload | undefined, @Req() req: Request) {
+    return this.ordersService.recoverCheckout(key, user?.sub, req.cookies?.['cart_session']);
+  }
+
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

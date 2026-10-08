@@ -1,0 +1,38 @@
+name: M5 isolated candidate code regression
+# Explicit invocation only, fresh checkout; no provider secrets or deployment.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: m5-code-regression-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.15.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm nx run api:m5-regression-test --skipNxCache
+      - run: pnpm nx run api:m5-release-test --skipNxCache
+      - run: pnpm nx run api:m5-lint --skipNxCache
+      - run: pnpm nx run api:m5-regression-doctor --skipNxCache
+      - run: pnpm nx run api:m5-regression --skipNxCache
+      - name: Collect dossier (NO_GO is not release permission)
+        if: always()
+        run: pnpm nx run api:m5-release-report --skipNxCache
+      - name: Retain sanitized code regression evidence only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m5-code-regression-evidence
+          path: |
+            artifacts/m5/*.json
+            artifacts/m5/*.md
+          if-no-files-found: warn

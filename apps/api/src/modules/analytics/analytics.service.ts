@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OrderStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
+import { LEGACY_FINANCE_REPORT } from '../finances/finance-reporting-scope';
+import { readLegacyRevenueSeries } from '../finances/legacy-revenue-series';
 
 interface GA4Event {
   name: string;
@@ -306,26 +308,14 @@ export class AnalyticsService {
 
   // ── Revenue dashboard ───────────────────────────────────────────────────────
 
-  async getDailyRevenue(days: number): Promise<{ date: string; revenue: number; orders: number }[]> {
-    const result: { date: string; revenue: number; orders: number }[] = [];
-    const client = this.redis.isAvailable() ? this.redis.getClient() : null;
-    for (let i = days - 1; i >= 0; i--) {
-      const date = this.dateStr(this.subDays(new Date(), i));
-      let revenue = 0;
-      let orders = 0;
-      if (client) {
-        try {
-          const [rev, ord] = await Promise.all([
-            client.get(`analytics:revenue:${date}`),
-            client.get(`analytics:orders:${date}`),
-          ]);
-          revenue = Number(rev ?? 0);
-          orders = Number(ord ?? 0);
-        } catch { /* no-op */ }
-      }
-      result.push({ date, revenue, orders });
-    }
-    return result;
+  async getDailyRevenue(days: number) {
+    if (!Number.isInteger(days) || days < 1 || days > 90) throw new Error('Invalid historical revenue days');
+    const end = new Date();
+    const start = new Date(end);
+    start.setUTCHours(0, 0, 0, 0);
+    start.setUTCDate(start.getUTCDate() - (days - 1));
+    const series = await readLegacyRevenueSeries(this.prisma, start, end);
+    return series.map((row) => ({ ...row, financeReporting: LEGACY_FINANCE_REPORT }));
   }
 
   // ── Admin badge counts ──────────────────────────────────────────────────────

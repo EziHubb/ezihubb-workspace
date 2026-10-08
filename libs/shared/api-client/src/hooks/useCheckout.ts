@@ -1,4 +1,7 @@
+'use client';
+
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRef } from 'react';
 import { api } from '../client';
 import { API_ROUTES } from '@ezihubb/constants';
 import type { CheckoutIntentDto } from '@ezihubb/types';
@@ -20,6 +23,7 @@ export interface ShippingAddressInput {
 
 /** Create a new order with an inline shipping address (supports guests). */
 export interface SubmitCheckoutInput {
+  idempotencyKey?: string; // Persist this opaque value in callers needing reload recovery.
   email?:          string;   // guest only
   shippingAddress: ShippingAddressInput;
   couponCode?:     string;
@@ -49,12 +53,27 @@ export interface ValidateGiftCardResponse {
 
 export function useCheckout() {
   const qc = useQueryClient();
+  const pending = useRef<{ key: string; payload: string } | null>(null);
 
   /** Create order with inline address — clears cart cache on success. */
   const submitOrder = useMutation({
-    mutationFn: (input: SubmitCheckoutInput) =>
-      api.post<SubmitCheckoutResponse>(API_ROUTES.ORDERS.CREATE, input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.cart() }),
+    mutationFn: (input: SubmitCheckoutInput) => {
+      const { firstName, lastName, ...address } = input.shippingAddress;
+      const body = { shippingAddress: { ...address, fullName: `${firstName} ${lastName}`.trim() },
+        guestEmail: input.email, couponCode: input.couponCode, giftCardCode: input.giftCardCode, note: input.notes };
+      const payload = JSON.stringify(body);
+      if (pending.current && (pending.current.payload !== payload
+        || (input.idempotencyKey && input.idempotencyKey !== pending.current.key))) {
+        throw new Error('Recover the original checkout request before changing its details.');
+      }
+      const key = pending.current?.key ?? input.idempotencyKey ?? crypto.randomUUID();
+      pending.current = { key, payload };
+      return api.post<SubmitCheckoutResponse>(API_ROUTES.ORDERS.CREATE, { ...body, idempotencyKey: key });
+    },
+    onSuccess: () => {
+      pending.current = null;
+      return qc.invalidateQueries({ queryKey: queryKeys.cart() });
+    },
   });
 
   /** Create a Stripe PaymentIntent for an existing order. */
