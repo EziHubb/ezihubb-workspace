@@ -18,6 +18,18 @@ const PORTS = { postgres: { '5432/tcp': '15432' }, redis: { '6379/tcp': '16379' 
 const GATES = ['ECONOMIC_V1_ENABLED', 'ECONOMIC_REFUNDS_ENABLED', 'ECONOMIC_CONSUMERS_ENABLED', 'ECONOMIC_POD_ENABLED', 'ECONOMIC_EMAIL_ENABLED'];
 const fail = code => { throw new Error(`M5_${code}`); };
 
+// Preserve actionable driver identifiers without exporting messages, SQL,
+// arguments, metadata, URLs, credentials or stack traces.
+function safeFailureDetails(error) {
+  const code = error?.code;
+  const details = typeof code === 'string' && (/^P\d{4}$/.test(code) || /^[0-9][A-Z0-9]{4}$/.test(code)
+    || ['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'MODULE_NOT_FOUND', 'ERR_MODULE_NOT_FOUND'].includes(code)) ? { driverCode: code } : {};
+  if (['PrismaClientValidationError', 'PrismaClientKnownRequestError', 'PrismaClientInitializationError'].includes(error?.name)) {
+    details.driverType = error.name;
+  }
+  return details;
+}
+
 function parseEnv(source) {
   const out = {};
   for (const line of source.split(/\r?\n/)) {
@@ -155,5 +167,5 @@ function assertOwnedContainers(containers) {
     seen.add(service);
   }
 }
-module.exports = { PROJECT, BEFORE_M4, DATABASES, SCENARIO_DATABASE, GATES, parseEnv, assertRuntime, assertEnvironment, generateEnvironment,
+module.exports = { PROJECT, BEFORE_M4, DATABASES, SCENARIO_DATABASE, GATES, safeFailureDetails, parseEnv, assertRuntime, assertEnvironment, generateEnvironment,
   localUrl, cleanChildEnvironment, migrationManifest, assertDatabaseIdentity, IMAGES, PORTS, assertDockerEndpoint, assertComposeConfig, assertOwnedContainers };

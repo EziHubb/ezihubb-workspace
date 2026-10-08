@@ -3,7 +3,18 @@ const { test } = require('node:test');
 const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const { GATES, parseEnv, generateEnvironment, assertEnvironment, assertRuntime, cleanChildEnvironment,
-  assertDatabaseIdentity, migrationManifest, IMAGES, PORTS, assertDockerEndpoint, assertComposeConfig, assertOwnedContainers } = require('./guard.cjs');
+  assertDatabaseIdentity, migrationManifest, IMAGES, PORTS, assertDockerEndpoint, assertComposeConfig, assertOwnedContainers, safeFailureDetails } = require('./guard.cjs');
+
+test('failure diagnostics export only allowlisted driver codes, never raw errors or metadata', () => {
+  for (const code of ['P2021', '42P01', '23505', 'ECONNREFUSED']) {
+    assert.deepEqual(safeFailureDetails({ code, message: 'PRIVATE', stack: 'PRIVATE', meta: { secret: 'PRIVATE' } }), { driverCode: code });
+  }
+  for (const code of ['postgresql://private', 'PRIVATE_SECRET', 'P2021\nPRIVATE', undefined]) {
+    assert.deepEqual(safeFailureDetails({ code, message: 'PRIVATE' }), {});
+  }
+  assert.deepEqual(safeFailureDetails({ name: 'PrismaClientValidationError', message: 'PRIVATE' }), { driverType: 'PrismaClientValidationError' });
+  assert.deepEqual(safeFailureDetails({ name: 'PRIVATE', message: 'PRIVATE' }), {});
+});
 
 test('generated environment has private independent secrets and round-trips without interpolation', () => {
   const env = generateEnvironment(), other = generateEnvironment();

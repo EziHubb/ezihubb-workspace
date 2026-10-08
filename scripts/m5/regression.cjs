@@ -8,12 +8,22 @@ const TASKS = Object.freeze(['api:lint', 'admin:lint', 'client:lint', 'api:build
 const WARNING_BUDGETS = { api: 180, admin: 562, client: 232 };
 const SCOPE = 'CANDIDATE_CODE_REGRESSION_ONLY_NOT_NATIVE_BROWSER_PROVIDER';
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
+// This exact committed public fixture is intentional test input, not a private
+// manifest. Any edit (including replacing placeholders with credentials) blocks.
+const PUBLIC_TEST_ENV_SHA256 = 'd355af50bdee0ad9968373b9074c652b3bd96e1d1ee66aab54765110a6e71f06';
 function assertCleanCheckout(root) {
   for (const directory of ['', 'apps/api', 'apps/admin', 'apps/client']) {
     const path = resolve(root, directory);
     if (lstatSync(path).isSymbolicLink()) throw new Error('M5_REGRESSION_CHECKOUT_LINK');
     for (const name of readdirSync(path)) {
-      if (name.startsWith('.env') && !['.env.example', '.env.sample'].includes(name)) throw new Error('M5_REGRESSION_PRIVATE_ENV_PRESENT');
+      if (!name.startsWith('.env')) continue;
+      const file = resolve(path, name), info = lstatSync(file);
+      if (!info.isFile() || info.isSymbolicLink()) throw new Error('M5_REGRESSION_PRIVATE_ENV_PRESENT');
+      // Next/Nx do not autoload names ending in .example or .sample.
+      if (/\.env(?:\.[a-z0-9_-]+)*\.(?:example|sample)$/.test(name)) continue;
+      if (!directory && name === '.env.test' && info.size < 16 * 1024
+        && sha256(readFileSync(file, 'utf8').replaceAll('\r\n', '\n')) === PUBLIC_TEST_ENV_SHA256) continue;
+      throw new Error('M5_REGRESSION_PRIVATE_ENV_PRESENT');
     }
   }
 }

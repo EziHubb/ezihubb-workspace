@@ -3,7 +3,7 @@ const { randomBytes } = require('node:crypto');
 const { mkdirSync, writeFileSync, readFileSync, existsSync, mkdtempSync, copyFileSync } = require('node:fs');
 const { resolve, join } = require('node:path');
 const { PROJECT, DATABASES, SCENARIO_DATABASE, BEFORE_M4, parseEnv, assertRuntime, assertEnvironment, generateEnvironment,
-  cleanChildEnvironment, migrationManifest, assertDatabaseIdentity, IMAGES, assertDockerEndpoint, assertComposeConfig, assertOwnedContainers } = require('./guard.cjs');
+  cleanChildEnvironment, migrationManifest, assertDatabaseIdentity, IMAGES, assertDockerEndpoint, assertComposeConfig, assertOwnedContainers, safeFailureDetails } = require('./guard.cjs');
 
 const root = resolve(__dirname, '../..');
 const envPath = resolve(root, '.env.m5.local');
@@ -39,6 +39,8 @@ function prisma(env, database, args, migrations) {
     '--config', resolve(root, 'scripts/m5/prisma.config.ts')], child, 'M5_PRISMA_COMMAND_FAILED');
 }
 async function databaseVerification(env, database, manifest) {
+  report.activeStage = 'database-client-setup';
+  report.activeDatabase = database; // Fixed local database identifiers only.
   const { Pool } = require('pg');
   const { PrismaPg } = require('@prisma/adapter-pg');
   const { PrismaClient } = require('@prisma/client');
@@ -48,6 +50,7 @@ async function databaseVerification(env, database, manifest) {
     options: '-c statement_timeout=60000 -c lock_timeout=10000' });
   const db = new PrismaClient({ adapter: new PrismaPg(pool), log: [] });
   try {
+    report.activeStage = 'database-identity';
     for (let attempt = 0; ; attempt++) {
       try { await assertDatabaseIdentity(pool, env, database); break; }
       catch (error) {
@@ -55,6 +58,7 @@ async function databaseVerification(env, database, manifest) {
         await new Promise(done => setTimeout(done, 1000));
       }
     }
+    report.activeStage = 'database-history-preflight';
     const names = (await pool.query("SELECT tablename FROM pg_tables WHERE schemaname='public'")).rows.map(row => row.tablename);
     if (names.length && !names.includes('_prisma_migrations')) throw new Error('M5_UNMANAGED_SCHEMA');
     const existing = names.includes('_prisma_migrations') ? (await pool.query('SELECT migration_name,checksum,finished_at,rolled_back_at FROM "_prisma_migrations" ORDER BY migration_name')).rows : [];
@@ -77,21 +81,27 @@ async function databaseVerification(env, database, manifest) {
         mkdirSync(join(subset, row.name));
         copyFileSync(resolve(root, 'prisma/migrations', row.name, 'migration.sql'), join(subset, row.name, 'migration.sql'));
       }
+      report.activeStage = 'upgrade-baseline-migration';
       prisma(env, database, ['deploy'], subset);
+      report.activeStage = 'upgrade-baseline-fixtures';
       const receipt = await seedFixtures(db, pool, env, database);
       step('upgrade-baseline-and-synthetic-fixtures', 'PASS', { snapshotHash: receipt.snapshotHash });
     } else if (upgrade) {
       if (!priorReceipt || priorReceipt.seededMigrationHead !== BEFORE_M4) throw new Error('M5_UPGRADE_BASELINE_NOT_PROVEN');
     }
+    report.activeStage = 'full-migration-chain';
     prisma(env, database, ['deploy']);
+    report.activeStage = 'synthetic-fixtures';
     const fixture = await seedFixtures(db, pool, env, database);
     const rows = (await pool.query('SELECT migration_name,checksum,finished_at,rolled_back_at FROM "_prisma_migrations" ORDER BY migration_name')).rows;
     if (rows.length !== manifest.length || rows.some((row, i) => row.migration_name !== manifest[i].name
       || row.checksum !== manifest[i].checksum || !row.finished_at || row.rolled_back_at)) throw new Error('M5_MIGRATION_HISTORY');
+    report.activeStage = 'migration-noop-and-fixture-replay';
     // Second deploy is a no-op; fixture replay must read and verify, never reset.
     prisma(env, database, ['deploy']);
     const replay = await seedFixtures(db, pool, env, database);
     if (JSON.stringify(replay) !== JSON.stringify(fixture)) throw new Error('M5_FIXTURE_CHANGED');
+    report.activeStage = 'schema-contract';
     const nano = (await pool.query('SELECT nanoid(12) AS id')).rows[0].id;
     if (!/^[a-zA-Z0-9]{12}$/.test(nano)) throw new Error('M5_NANOID_DEFAULT');
     for (const table of ['EconomicOrderContext', 'EconomicOperation', 'EconomicCapture', 'EconomicRefund', 'EconomicOutbox', 'EconomicConsumerReceipt']) {
@@ -99,12 +109,15 @@ async function databaseVerification(env, database, manifest) {
     }
     const guards = (await pool.query("SELECT proname FROM pg_proc WHERE proname IN ('economic_refund_intent_guard','economic_shipping_external_handoff_guard')")).rows;
     if (guards.length !== 2) throw new Error('M5_SCHEMA_CONTRACT');
+    report.activeStage = 'prisma-schema-diff';
     prisma(env, database, ['diff', '--from-config-datasource', '--to-schema', resolve(root, 'prisma/schema.prisma'), '--exit-code']);
     step(upgrade ? 'native-postgresql-upgrade-chain' : 'native-postgresql-fresh-chain', 'PASS',
       { database, migrationCount: rows.length, fixtureIds: fixture.ids, snapshotHash: fixture.snapshotHash, prismaSchemaDiff: 'EMPTY' });
   } finally { await db.$disconnect(); await pool.end(); }
 }
 async function infrastructureVerification(env) {
+  report.activeStage = 'local-infrastructure-connectivity';
+  delete report.activeDatabase;
   const Redis = require('ioredis');
   const mongoose = require('mongoose');
   const { S3Client, CreateBucketCommand, HeadBucketCommand } = require('@aws-sdk/client-s3');
@@ -236,7 +249,7 @@ main().then(() => {
   report.outcome = report.steps.some(s => s.outcome === 'BLOCKED') ? 'BLOCKED' : 'PASS';
 }).catch(error => {
   report.outcome = 'BLOCKED';
-  step('action', 'BLOCKED', { code: /^M5_[A-Z0-9_]+$/.test(error.message) ? error.message : 'M5_ACTION_FAILED' });
+  step('action', 'BLOCKED', { code: /^M5_[A-Z0-9_]+$/.test(error.message) ? error.message : 'M5_ACTION_FAILED', ...safeFailureDetails(error) });
 }).finally(() => {
   report.completedAt = new Date().toISOString();
   const directory = resolve(root, 'artifacts/m5');

@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { mkdtempSync, mkdirSync, writeFileSync, readFileSync } = require('node:fs');
+const { mkdtempSync, mkdirSync, writeFileSync, readFileSync, symlinkSync } = require('node:fs');
 const { tmpdir } = require('node:os');
 const { resolve } = require('node:path');
 const { spawnSync } = require('node:child_process');
@@ -53,7 +53,23 @@ test('runtime guard refuses incompatible Node and unsupported cleanup platforms'
 test('private Next/Nx env files block before reading them; public examples remain allowed', () => {
   const directory = checkout();
   writeFileSync(resolve(directory, '.env.example'), 'public'); assertCleanCheckout(directory);
+  for (const app of ['admin', 'client']) writeFileSync(resolve(directory, `apps/${app}/.env.local.example`), 'public');
+  writeFileSync(resolve(directory, '.env.test'), readFileSync(resolve(root, '.env.test')));
+  assertCleanCheckout(directory);
   writeFileSync(resolve(directory, 'apps/client/.env.production.local'), 'PRIVATE_MARKER');
+  assert.throws(() => assertCleanCheckout(directory), /M5_REGRESSION_PRIVATE_ENV_PRESENT/);
+});
+test('only the exact public root test fixture is allowed; modified and app test manifests block', () => {
+  const modified = checkout();
+  writeFileSync(resolve(modified, '.env.test'), readFileSync(resolve(root, '.env.test'), 'utf8') + '\nPRIVATE=changed\n');
+  assert.throws(() => assertCleanCheckout(modified), /M5_REGRESSION_PRIVATE_ENV_PRESENT/);
+  const app = checkout();
+  writeFileSync(resolve(app, 'apps/client/.env.test'), readFileSync(resolve(root, '.env.test')));
+  assert.throws(() => assertCleanCheckout(app), /M5_REGRESSION_PRIVATE_ENV_PRESENT/);
+});
+test('public-looking env links are rejected without following them', () => {
+  const directory = checkout();
+  symlinkSync(resolve(directory, 'apps/client'), resolve(directory, '.env.local.example'), 'junction');
   assert.throws(() => assertCleanCheckout(directory), /M5_REGRESSION_PRIVATE_ENV_PRESENT/);
 });
 test('synthetic child environment cannot inherit provider keys, DB, TLS bypass or caller test filters', () => {
