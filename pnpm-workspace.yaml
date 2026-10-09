@@ -31,6 +31,7 @@ overrides:
   'source-map-js@<1.2.2': 1.2.2
   'shell-quote@>=1.8.4 <1.11.0': 1.11.0
   'sharp@<0.35.5': 0.35.5
+  'ts-jest>handlebars': 4.7.10
 
 allowBuilds:
   '@firebase/util': true
