@@ -4,7 +4,25 @@ const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const { Prisma } = require('@prisma/client');
 const { generateEnvironment, BEFORE_M4 } = require('./guard.cjs');
-const { seedFixtures } = require('./fixtures.cjs');
+const { seedFixtures, assertFixtureReplayUnchanged } = require('./fixtures.cjs');
+
+test('fixture replay accepts JSONB object-key reordering but rejects every changed value', () => {
+  const before = { version: 'fixture-v1', ids: { users: ['buyer', 'seller'], stores: ['shop'] },
+    snapshotHash: 'original', seededMigrationHead: BEFORE_M4, collectedMoney: false };
+  const replay = { collectedMoney: false, seededMigrationHead: BEFORE_M4, snapshotHash: 'original',
+    ids: { stores: ['shop'], users: ['buyer', 'seller'] }, version: 'fixture-v1' };
+  assert.notEqual(JSON.stringify(before), JSON.stringify(replay));
+  assertFixtureReplayUnchanged(before, replay);
+  for (const change of [
+    row => { row.ids.users.reverse(); }, row => { row.ids.stores[0] = 'other'; },
+    row => { row.snapshotHash = 'changed'; }, row => { row.seededMigrationHead = 'changed'; },
+    row => { row.collectedMoney = true; }, row => { row.collectedMoney = 'false'; },
+    row => { delete row.version; }, row => { row.extra = true; },
+  ]) {
+    const changed = structuredClone(replay); change(changed);
+    assert.throws(() => assertFixtureReplayUnchanged(before, changed), /M5_FIXTURE_CHANGED/);
+  }
+});
 
 // Unit-shaped Prisma model validation/replay checks. NOT real Prisma/DB evidence.
 function fixtureDatabase() {
@@ -12,7 +30,11 @@ function fixtureDatabase() {
   const rows = {}, counters = { writes: 0 };
   const tx = {
     $executeRawUnsafe: async (sql, _name, payload) => {
-      if (sql.startsWith('INSERT')) { receipt = JSON.parse(payload); counters.writes++; }
+      if (sql.startsWith('INSERT')) {
+        receipt = JSON.parse(payload);
+        receipt.ids = Object.fromEntries(Object.entries(receipt.ids).reverse());
+        counters.writes++;
+      }
     },
     $queryRawUnsafe: async sql => sql.includes('_prisma_migrations') ? [{ migration_name: BEFORE_M4 }] : receipt ? [{ payload: receipt }] : [],
   };
@@ -61,7 +83,9 @@ test('synthetic fixtures cover tenants, stock modes, manual/multi-shop and guest
   assert.equal(rows.payment.length, 0); assert.equal(rows.sellerLedgerEntry.length, 0);
   assert.equal(rows.economicCapture.length, 0); assert.equal(rows.economicOrderContext.length, 0);
   const before = counters.writes;
-  assert.deepEqual(await seedFixtures(db, identityPool(env), env, 'ezihubb_m5_upgrade'), first);
+  const replay = await seedFixtures(db, identityPool(env), env, 'ezihubb_m5_upgrade');
+  assert.notEqual(JSON.stringify(replay), JSON.stringify(first));
+  assertFixtureReplayUnchanged(first, replay);
   assert.equal(counters.writes, before, 'replay must not reset fixtures or hashes');
   rows.product[0].quantity = 0;
   await assert.rejects(seedFixtures(db, identityPool(env), env, 'ezihubb_m5_upgrade'), /M5_FIXTURE_CHANGED/);

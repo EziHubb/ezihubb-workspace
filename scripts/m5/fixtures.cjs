@@ -1,9 +1,15 @@
 const { createHash } = require('node:crypto');
+const { isDeepStrictEqual } = require('node:util');
 const { assertDatabaseIdentity } = require('./guard.cjs');
 const bcrypt = require('bcrypt');
 
 const VERSION = 'm5-foundation-fixtures-v1';
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+function assertFixtureReplayUnchanged(before, replay) {
+  // PostgreSQL JSONB can reorder object keys. Compare values and types while
+  // retaining array order, IDs, hashes, migration identity and every field.
+  if (!isDeepStrictEqual(before, replay)) throw new Error('M5_FIXTURE_CHANGED');
+}
 const select = {
   user: { id: true, email: true, role: true, isSeller: true, storeId: true, isEmailVerified: true, passwordHash: true },
   store: { id: true, slug: true, ownerId: true, status: true, fulfillmentMode: true },
@@ -89,4 +95,4 @@ async function seedFixtures(db, pool, env, database) {
     return verifyFixtureReceipt(tx, receipt);
   }, { timeout: 30_000 });
 }
-module.exports = { VERSION, seedFixtures, verifyFixtureReceipt };
+module.exports = { VERSION, seedFixtures, verifyFixtureReceipt, assertFixtureReplayUnchanged };

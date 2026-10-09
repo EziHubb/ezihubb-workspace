@@ -58,6 +58,24 @@ or exactly-once email delivery. SMTP critical-job alerts do not close that gap.
 
 ## Finite outstanding M5 acceptance
 
+### Isolated Linux reruns during the all-changes deployment
+
+For candidate `05de516`, foundation run `37877030540` passed actual owned
+loopback transport but stopped at fixture replay. PostgreSQL JSONB reordered
+object keys; serialization comparison reported changed data although values
+were identical. The verifier now uses strict deep equality. Tests reproduce
+persisted key reordering and still reject changed values, types, array order,
+IDs, hashes, migration identity, missing fields and extra fields. The updated
+foundation must be rerun on Linux; a unit reproduction alone is not acceptance.
+
+Candidate code regression run `37877034535` passed three lint targets and the
+API production build, then blocked at the admin production build with the safe
+`NETWORK_POLICY_DENIED` marker. The sanitized evidence does not establish which
+connection was denied. No network allowlist, TLS policy or acceptance requirement
+has been relaxed. This isolated M5 acceptance remains incomplete, separately
+from the normal CI/Docker deployment gates and the owner's all-changes deployment
+approval. Deployment does not authorize financial activation or close M5.
+
 The release verdict remains **NO_GO**. This remediation does not replace or
 expand the [fixed M5 release matrix](m5-release.md).
 

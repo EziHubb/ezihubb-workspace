@@ -46,7 +46,7 @@ async function databaseVerification(env, database, manifest) {
   const { Pool } = require('pg');
   const { PrismaPg } = require('@prisma/adapter-pg');
   const { PrismaClient } = require('@prisma/client');
-  const { seedFixtures, verifyFixtureReceipt } = require('./fixtures.cjs');
+  const { seedFixtures, verifyFixtureReceipt, assertFixtureReplayUnchanged } = require('./fixtures.cjs');
   const child = cleanChildEnvironment(env, database);
   const pool = new Pool({ connectionString: child.DATABASE_URL, connectionTimeoutMillis: 5000, max: 3,
     options: '-c statement_timeout=60000 -c lock_timeout=10000' });
@@ -96,7 +96,7 @@ async function databaseVerification(env, database, manifest) {
     // Second deploy is a no-op; fixture replay must read and verify, never reset.
     prisma(env, database, ['deploy']);
     const replay = await seedFixtures(db, pool, env, database);
-    if (JSON.stringify(replay) !== JSON.stringify(fixture)) throw new Error('M5_FIXTURE_CHANGED');
+    assertFixtureReplayUnchanged(fixture, replay);
     report.activeStage = 'schema-contract';
     const nano = (await pool.query('SELECT nanoid(12) AS id')).rows[0].id;
     if (!/^[a-zA-Z0-9]{12}$/.test(nano)) throw new Error('M5_NANOID_DEFAULT');
