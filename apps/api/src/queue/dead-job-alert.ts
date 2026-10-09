@@ -1,7 +1,7 @@
 import type { Logger } from '@nestjs/common';
 import type { Job, Queue } from 'bullmq';
-import { DEFAULT_JOB_OPTIONS, JOBS } from './queue.constants';
-import { jobIdOf } from './domain-events';
+import { JOBS } from './queue.constants';
+import { sendCriticalJobAlert } from './critical-job-alert';
 
 /**
  * Marker for a job that has exhausted every retry.
@@ -44,10 +44,9 @@ const CRITICAL_JOBS = new Set<string>([
  * Returns immediately while attempts remain, so callers can invoke it from a
  * plain 'failed' handler without repeating the arithmetic.
  *
- * KNOWN LIMIT: the alert is queued as an email, so a failure caused by Redis
- * being down takes the alert with it. Covering that needs an out-of-band
- * channel and is not solved here — the marker in the log still ships to the
- * log backend independently, which is the fallback.
+ * Critical alerts go straight to SMTP, not to the failed Redis queue. The log
+ * marker remains when SMTP is absent/unavailable. A process that cannot run
+ * this handler still needs an independent external monitor (M5 acceptance).
  */
 export async function reportDeadJob(
   job: Job,
@@ -64,35 +63,12 @@ export async function reportDeadJob(
 
   ctx.logger.error(detail);
 
-  if (!critical || !ctx.emailQueue) return;
-
-  const adminEmail = process.env['ADMIN_EMAIL'] ?? 'admin@ezihubb.com';
-  await ctx.emailQueue
-    .add(
-      JOBS.SEND_EMAIL,
-      {
-        to:       adminEmail,
-        template: 'system-alert',
-        subject:  `Job failed permanently: ${job.name}`,
-        data: {
-          jobName:   job.name,
-          jobId:     String(job.id ?? ''),
-          queueName: job.queueName,
-          attempts:  job.attemptsMade,
-          payload:   '[REDACTED: inspect authorized job storage using jobId]',
-          error:     'JOB_FAILED',
-          year:      new Date().getFullYear(),
-        },
-      },
-      // Its own jobId, so a job failing repeatedly across deploys does not
-      // mail the same alert again and again.
-      // Same ':' trap as the event bus — and worse here, because a throw while
-      // reporting a dead job would hide the failure it was sent to report.
-      { ...DEFAULT_JOB_OPTIONS, jobId: jobIdOf('dead-job-alert', job.queueName, job.id ?? '') },
-    )
-    // Never let alerting failure mask the original failure — that error is the
-    // one worth keeping, and throwing here would replace it.
-    .catch(() =>
-      ctx.logger.error(`Failed to queue dead-job alert for ${job.name}`),
-    );
+  if (!critical) return;
+  try {
+    const result = await sendCriticalJobAlert({ jobName: job.name, jobId: String(job.id ?? ''), queueName: job.queueName, attempts: job.attemptsMade });
+    if (result === 'NOT_CONFIGURED') ctx.logger.error('[CRITICAL-ALERT] SMTP_NOT_CONFIGURED');
+  } catch {
+    // Never emit credentials/provider replies or mask the original job failure.
+    ctx.logger.error('[CRITICAL-ALERT] SMTP_FAILED_OR_UNKNOWN');
+  }
 }

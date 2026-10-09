@@ -1,4 +1,8 @@
-version: '3.9'
+x-bounded-logging: &bounded-logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
 
 # Production stack for the dedicated AWS EC2 instance. Builds images
 # directly on the instance from the single docker/Dockerfile (one `base` +
@@ -34,6 +38,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: ezihubb_redis
+    logging: *bounded-logging
     restart: unless-stopped
     volumes:
       - redis_data:/data
@@ -47,6 +52,7 @@ services:
   mongodb:
     image: mongo:7-jammy
     container_name: ezihubb_mongodb
+    logging: *bounded-logging
     restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-ezihubb}
@@ -67,6 +73,7 @@ services:
       dockerfile: docker/Dockerfile
       target: migrate
     container_name: ezihubb_migrate
+    logging: *bounded-logging
     profiles: ['tools']
     env_file: .env
 
@@ -77,6 +84,7 @@ services:
       dockerfile: docker/Dockerfile
       target: api
     container_name: ezihubb_api
+    logging: *bounded-logging
     restart: unless-stopped
     depends_on:
       redis:
@@ -125,6 +133,7 @@ services:
         NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
         NEXT_PUBLIC_FIREBASE_VAPID_KEY: ${NEXT_PUBLIC_FIREBASE_VAPID_KEY}
     container_name: ezihubb_client
+    logging: *bounded-logging
     restart: unless-stopped
     depends_on:
       - api
@@ -165,6 +174,7 @@ services:
         # with no BUILD_VERSION in the environment.
         NEXT_PUBLIC_BUILD_VERSION: ${BUILD_VERSION:-local}
     container_name: ezihubb_admin
+    logging: *bounded-logging
     restart: unless-stopped
     depends_on:
       - api

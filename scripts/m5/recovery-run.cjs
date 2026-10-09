@@ -2,9 +2,10 @@ const { randomBytes } = require('node:crypto');
 const { readFileSync, lstatSync, existsSync, mkdirSync, writeFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const { spawn } = require('node:child_process');
-const { assertRuntime, assertEnvironment, parseEnv, cleanChildEnvironment, assertDatabaseIdentity, SCENARIO_DATABASE, migrationManifest } = require('./guard.cjs');
+const { PROJECT, assertRuntime, assertEnvironment, parseEnv, cleanChildEnvironment, assertDatabaseIdentity, SCENARIO_DATABASE, migrationManifest } = require('./guard.cjs');
 const { sourceChecksums, findFoundationEvidence, findContentionEvidence } = require('./evidence.cjs');
-const { ROOT, dockerContext, ownedContainers, inspectOwned, redisAction, assertRecoveryEvidence } = require('./recovery-support.cjs');
+const { ROOT, command, dockerContext, ownedContainers, inspectOwned, redisAction, assertRecoveryEvidence } = require('./recovery-support.cjs');
+const { withOwnedLoopbackRelays } = require('./loopback-relay.cjs');
 const report = { version: 'm5.4-v1', runId: randomBytes(12).toString('hex'), startedAt: new Date().toISOString(),
   scope: 'LOCAL_SYNTHETIC_RECOVERY_ONLY', steps: [], productionActivated: false, providerOperations: false,
   recoveryVerified: false, fullStackVerified: false, milestoneComplete: false, sourceChecksums: sourceChecksums(ROOT) };
@@ -37,55 +38,62 @@ async function main() {
   if (!context) { report.outcome = 'BLOCKED'; return; }
   const containers = check('owned-running-containers', () => ownedContainers(context, env));
   if (report.steps.some(row => row.outcome === 'BLOCKED') || report.action === 'doctor') return;
-  const { Pool } = require('pg');
-  const coordination = new Pool({ connectionString: cleanChildEnvironment(env, SCENARIO_DATABASE).DATABASE_URL, max: 1,
-    connectionTimeoutMillis: 5000, options: '-c statement_timeout=60000 -c lock_timeout=10000' });
-  let ownedLock = false;
-  let result;
-  try {
-    await assertDatabaseIdentity(coordination, env, SCENARIO_DATABASE);
-    ownedLock = (await coordination.query("SELECT pg_try_advisory_lock(hashtext('m5.4-local-recovery-v1')) AS locked")).rows[0].locked;
-    if (!ownedLock) throw new Error('M5_RECOVERY_ALREADY_RUNNING');
-    result = await new Promise((yes, no) => {
-    const child = spawn(process.execPath, ['--import', 'tsx', resolve(ROOT, 'scripts/m5/recovery.ts'), report.runId, foundationId, contentionId],
-      { cwd: ROOT, env: { ...cleanChildEnvironment(env, SCENARIO_DATABASE), TSX_TSCONFIG_PATH: resolve(ROOT, 'scripts/m5/recovery-runtime.tsconfig.json') },
-        windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-    let output = '', size = 0, aborted = false;
-    child.stdout.on('data', bytes => { size += bytes.length; if (size > 1024 * 1024) { aborted = true; child.kill('SIGKILL'); } else output += bytes; });
-    child.stderr.resume(); // Never echo credentials/driver data.
-    // Child implements its own bounded operations + Redis restart in finally.
-    // A watchdog is not a recovery result; any abnormal exit fails the gate.
-    const timer = setTimeout(() => { aborted = true; child.kill('SIGKILL'); }, 600_000);
-    child.on('error', () => { clearTimeout(timer); no(new Error('M5_RECOVERY_CHILD')); });
-    child.on('close', code => {
-      clearTimeout(timer);
-      try { if (aborted || code !== 0) throw new Error('M5_RECOVERY_CHILD'); yes(JSON.parse(output)); }
-      catch { no(new Error('M5_RECOVERY_CHILD')); }
-    });
-  }); } finally {
-    // Independent cleanup also runs after watchdog/child failure: revalidate the
-    // same container ID before restart, never target another service/container.
+  const inspected = JSON.parse(command(['--context', context, 'inspect', ...Object.values(containers)], env).toString());
+  const network = JSON.parse(command(['--context', context, 'network', 'inspect', `${PROJECT}_isolated`], env).toString());
+  if (!Array.isArray(network) || network.length !== 1) throw new Error('M5_RELAY_NETWORK_IDENTITY');
+  await withOwnedLoopbackRelays(inspected, network[0], async () => {
+    report.transport = 'VERIFIED_DOCKER_PUBLICATION_OR_OWNED_LOOPBACK_RELAY';
+    const { Pool } = require('pg');
+    const coordination = new Pool({ connectionString: cleanChildEnvironment(env, SCENARIO_DATABASE).DATABASE_URL, max: 1,
+      connectionTimeoutMillis: 5000, options: '-c statement_timeout=60000 -c lock_timeout=10000' });
+    let ownedLock = false;
+    let result;
     try {
-      if (ownedLock) {
-        const state = inspectOwned(context, env, containers.redis, 'redis');
-        if (!state.State?.Running) redisAction(context, env, containers.redis, 'start');
-        ownedContainers(context, env);
-        report.steps.push({ name: 'owned-stack-running-after-child', outcome: 'PASS' });
-      }
+      await assertDatabaseIdentity(coordination, env, SCENARIO_DATABASE);
+      ownedLock = (await coordination.query("SELECT pg_try_advisory_lock(hashtext('m5.4-local-recovery-v1')) AS locked")).rows[0].locked;
+      if (!ownedLock) throw new Error('M5_RECOVERY_ALREADY_RUNNING');
+      result = await new Promise((yes, no) => {
+        const child = spawn(process.execPath, ['--import', 'tsx', resolve(ROOT, 'scripts/m5/recovery.ts'), report.runId, foundationId, contentionId],
+          { cwd: ROOT, env: { ...cleanChildEnvironment(env, SCENARIO_DATABASE), TSX_TSCONFIG_PATH: resolve(ROOT, 'scripts/m5/recovery-runtime.tsconfig.json') },
+            windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+        let output = '', size = 0, aborted = false;
+        child.stdout.on('data', bytes => { size += bytes.length; if (size > 1024 * 1024) { aborted = true; child.kill('SIGKILL'); } else output += bytes; });
+        child.stderr.resume(); // Never echo credentials/driver data.
+        // Child implements its own bounded operations + Redis restart in finally.
+        // A watchdog is not a recovery result; any abnormal exit fails the gate.
+        const timer = setTimeout(() => { aborted = true; child.kill('SIGKILL'); }, 600_000);
+        child.on('error', () => { clearTimeout(timer); no(new Error('M5_RECOVERY_CHILD')); });
+        child.on('close', code => {
+          clearTimeout(timer);
+          try { if (aborted || code !== 0) throw new Error('M5_RECOVERY_CHILD'); yes(JSON.parse(output)); }
+          catch { no(new Error('M5_RECOVERY_CHILD')); }
+        });
+      });
     } finally {
-      if (ownedLock) await coordination.query("SELECT pg_advisory_unlock(hashtext('m5.4-local-recovery-v1'))").catch(() => undefined);
-      await coordination.end();
+      // Independent cleanup also runs after watchdog/child failure: revalidate the
+      // same container ID before restart, never target another service/container.
+      try {
+        if (ownedLock) {
+          const state = inspectOwned(context, env, containers.redis, 'redis');
+          if (!state.State?.Running) redisAction(context, env, containers.redis, 'start');
+          ownedContainers(context, env);
+          report.steps.push({ name: 'owned-stack-running-after-child', outcome: 'PASS' });
+        }
+      } finally {
+        if (ownedLock) await coordination.query("SELECT pg_advisory_unlock(hashtext('m5.4-local-recovery-v1'))").catch(() => undefined);
+        await coordination.end();
+      }
     }
-  }
-  if (result.outcome !== 'PASS') {
-    if (require('./recovery-contract.json').includes(result.failedCase)) report.steps.push({ name: result.failedCase, outcome: 'FAIL' });
-    throw new Error('M5_RECOVERY_CASE_FAILED');
-  }
-  assertRecoveryEvidence(result, report.runId, foundationId, contentionId);
-  if (JSON.stringify(sourceChecksums(ROOT)) !== JSON.stringify(report.sourceChecksums)) throw new Error('M5_RECOVERY_CANDIDATE_CHANGED');
-  report.cases = result.cases; report.restore = result.restore;
-  report.recoveryVerified = true;
-  report.steps.push({ name: 'native-local-failure-and-restore', outcome: 'PASS' });
+    if (result.outcome !== 'PASS') {
+      if (require('./recovery-contract.json').includes(result.failedCase)) report.steps.push({ name: result.failedCase, outcome: 'FAIL' });
+      throw new Error('M5_RECOVERY_CASE_FAILED');
+    }
+    assertRecoveryEvidence(result, report.runId, foundationId, contentionId);
+    if (JSON.stringify(sourceChecksums(ROOT)) !== JSON.stringify(report.sourceChecksums)) throw new Error('M5_RECOVERY_CANDIDATE_CHANGED');
+    report.cases = result.cases; report.restore = result.restore;
+    report.recoveryVerified = true;
+    report.steps.push({ name: 'native-local-failure-and-restore', outcome: 'PASS' });
+  });
 }
 main().catch(error => { report.outcome = 'BLOCKED'; report.steps.push({ name: 'recovery', outcome: 'BLOCKED', code: codeOf(error) }); })
   .finally(() => {

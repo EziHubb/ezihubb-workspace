@@ -30,14 +30,9 @@ jobs:
       - run: pnpm nx run api:m5-init --skipNxCache
       - run: pnpm nx run api:m5-doctor --skipNxCache
       - run: pnpm nx run api:m5-up --skipNxCache
-      - name: Wait for local PostgreSQL bootstrap
-        run: |
-          for attempt in $(seq 1 60); do
-            if docker compose --project-name ezihubb-m5 --env-file .env.m5.local --file docker/m5/compose.yml exec -T postgres pg_isready -U ezihubb_m5 -d ezihubb_m5_fresh; then
-              break
-            fi
-            sleep 2
-          done
+      # The verifier waits on authenticated host TCP and the ownership marker.
+      # In-container pg_isready can see the temporary bootstrap Unix socket,
+      # and used to succeed even when the host port was not actually published.
       - run: pnpm nx run api:m5-verify --skipNxCache
       - run: pnpm nx run api:m5-contention --skipNxCache
       # Native local drills only; not M5.3 sandbox/full-stack acceptance or release.

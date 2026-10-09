@@ -1,4 +1,16 @@
-Current phase: E — M4 CLOSED locally; M5.1/M5.2 native acceptance BLOCKED; M5.3/M5.4 incomplete; M5.5 dossier tooling implemented, release NO-GO (updated 2026-10-08)
+Current phase: E — M4 CLOSED locally; M5.1/M5.2 native acceptance BLOCKED; M5.3/M5.4 incomplete; M5.5 dossier tooling implemented, release NO-GO (updated 2026-10-09)
+
+## Approved audit remediation — 2026-10-09
+
+Tracking delivery is guarded against closed orders, wrong shipments and replay;
+product Performance no longer fabricates traffic; critical-job SMTP alerts bypass
+Redis; production Compose log rotation is bounded; M5 foundation transport and
+regression production environment/safe diagnostics are hardened. These are local
+changes, not verified production fixes or native M5 acceptance. See the complete
+[remediation evidence and remaining scope](issue-remediation-2026-10-09.md).
+The owner explicitly requested deployment of all pending changes on 2026-10-09.
+Deployment gates and production verification are still required; this approval
+does not activate payments or close the outstanding M5 acceptance matrix.
 
 ## M5 code-regression execution driver — 2026-10-08 continuation
 

@@ -7,6 +7,8 @@ const { PROJECT, DATABASES, SCENARIO_DATABASE, BEFORE_M4, parseEnv, assertRuntim
 
 const root = resolve(__dirname, '../..');
 const envPath = resolve(root, '.env.m5.local');
+const { waitForDatabaseIdentity } = require('./readiness.cjs');
+const { withOwnedLoopbackRelays } = require('./loopback-relay.cjs');
 const { sourceChecksums, findFoundationEvidence, assertContentionEvidence } = require('./evidence.cjs');
 const report = { version: 'm5.1-v1', runId: randomBytes(12).toString('hex'), startedAt: new Date().toISOString(),
   scope: 'LOCAL_SYNTHETIC_FOUNDATION_ONLY', steps: [], productionActivated: false, providerOperations: false, foundationVerified: false, contentionVerified: false,
@@ -51,13 +53,7 @@ async function databaseVerification(env, database, manifest) {
   const db = new PrismaClient({ adapter: new PrismaPg(pool), log: [] });
   try {
     report.activeStage = 'database-identity';
-    for (let attempt = 0; ; attempt++) {
-      try { await assertDatabaseIdentity(pool, env, database); break; }
-      catch (error) {
-        if (attempt >= 19 || !['ECONNREFUSED', 'ECONNRESET', '57P03'].includes(error.code)) throw error;
-        await new Promise(done => setTimeout(done, 1000));
-      }
-    }
+    await waitForDatabaseIdentity(pool, env, database);
     report.activeStage = 'database-history-preflight';
     const names = (await pool.query("SELECT tablename FROM pg_tables WHERE schemaname='public'")).rows.map(row => row.tablename);
     if (names.length && !names.includes('_prisma_migrations')) throw new Error('M5_UNMANAGED_SCHEMA');
@@ -234,16 +230,28 @@ async function main() {
   }
   const containerIds = command('docker', composeArgs(context, ['ps', '-q']), cleanChildEnvironment(env), 'M5_STACK_NOT_RUNNING').trim().split(/\s+/);
   if (containerIds.length !== 5 || containerIds.some(id => !/^[a-f0-9]{12,64}$/.test(id))) throw new Error('M5_STACK_NOT_RUNNING');
-  assertOwnedContainers(JSON.parse(command('docker', ['--context', context, 'inspect', ...containerIds], cleanChildEnvironment(env), 'M5_STACK_NOT_RUNNING')));
+  const containers = JSON.parse(command('docker', ['--context', context, 'inspect', ...containerIds], cleanChildEnvironment(env), 'M5_STACK_NOT_RUNNING'));
+  assertOwnedContainers(containers);
   step('running-containers-match-owned-project-and-image-digests', 'PASS');
-  const manifest = migrationManifest(root);
-  report.migrations = manifest;
-  if (action === 'contention') { await contentionVerification(env, manifest); return; }
-  await databaseVerification(env, DATABASES[0], manifest);
-  await databaseVerification(env, DATABASES[1], manifest);
-  await infrastructureVerification(env);
-  report.foundationVerified = true;
-  step('m5.2-concurrency-and-m5.3-provider-https', 'NOT_RUN');
+  report.activeStage = 'host-published-ports';
+  report.hostPorts = containers.map(row => {
+    const service = row.Config.Labels['com.docker.compose.service'];
+    return { service, published: Object.values(row.NetworkSettings?.Ports ?? {}).some(bindings => Array.isArray(bindings) && bindings.length > 0) };
+  });
+  const network = JSON.parse(command('docker', ['--context', context, 'network', 'inspect', `${PROJECT}_isolated`], cleanChildEnvironment(env), 'M5_RELAY_NETWORK_IDENTITY'));
+  if (!Array.isArray(network) || network.length !== 1) throw new Error('M5_RELAY_NETWORK_IDENTITY');
+  await withOwnedLoopbackRelays(containers, network[0], async () => {
+    report.transport = 'VERIFIED_DOCKER_PUBLICATION_OR_OWNED_LOOPBACK_RELAY';
+    step('actual-owned-loopback-transport', 'PASS');
+    const manifest = migrationManifest(root);
+    report.migrations = manifest;
+    if (action === 'contention') { await contentionVerification(env, manifest); return; }
+    await databaseVerification(env, DATABASES[0], manifest);
+    await databaseVerification(env, DATABASES[1], manifest);
+    await infrastructureVerification(env);
+    report.foundationVerified = true;
+    step('m5.2-concurrency-and-m5.3-provider-https', 'NOT_RUN');
+  });
 }
 main().then(() => {
   report.outcome = report.steps.some(s => s.outcome === 'BLOCKED') ? 'BLOCKED' : 'PASS';

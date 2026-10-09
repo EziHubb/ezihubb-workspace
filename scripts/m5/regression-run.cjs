@@ -8,7 +8,7 @@ const { sourceChecksums } = require('./evidence.cjs');
 const { migrationManifest } = require('./guard.cjs');
 const { releaseFingerprint, assertArtifactPath } = require('./release.cjs');
 const { TASKS, SCOPE, assertCleanCheckout, assertRegressionRuntime, regressionEnvironment, taskArguments,
-  assertResolvedProject, apiTestInventory, readJestSummary, assertRegressionEvidence, sha256 } = require('./regression.cjs');
+  assertResolvedProject, apiTestInventory, readJestSummary, assertRegressionEvidence, sha256, taskEnvironment, safeTaskDiagnostics } = require('./regression.cjs');
 const root = resolve(__dirname, '../..');
 const report = { version: 'm5.5-regression-v1', runId: randomBytes(12).toString('hex'), startedAt: new Date().toISOString(),
   scope: SCOPE, tasks: [], steps: [], runtime: { node: process.versions.node, platform: process.platform },
@@ -23,28 +23,36 @@ function command(args, env, logFile, capture = false) {
   return new Promise((yes, no) => {
     const log = createWriteStream(logFile, { flags: 'wx', mode: 0o600 });
     const child = spawn('pnpm', args, { cwd: root, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
-    let size = 0, stdout = '', failed = false;
+    let size = 0, stdout = '', failure = null;
     const killGroup = () => {
       // Only the group created by this still-owned spawn; never caller input.
       if (Number.isSafeInteger(child.pid) && child.pid > 1) {
         try { process.kill(-child.pid, 'SIGKILL'); } catch { /* already exited */ }
       }
     };
-    const timer = setTimeout(() => { failed = true; killGroup(); }, 30 * 60_000);
+    const timer = setTimeout(() => { failure = 'TIMEOUT'; killGroup(); }, 30 * 60_000);
     function bytes(data, isStdout) {
       size += data.length;
-      if (size > (capture ? 4 : 100) * 1024 * 1024) { failed = true; killGroup(); return; }
+      if (size > (capture ? 4 : 100) * 1024 * 1024) { failure = 'OUTPUT_LIMIT'; killGroup(); return; }
       log.write(data);
       if (capture && isStdout) stdout += data.toString();
     }
     child.stdout.on('data', data => bytes(data, true)); child.stderr.on('data', data => bytes(data, false));
-    log.on('error', () => { failed = true; killGroup(); });
-    child.on('error', () => { failed = true; });
-    child.on('close', exitCode => {
+    log.on('error', () => { failure = 'LOG_IO'; killGroup(); });
+    child.on('error', () => { failure = 'SPAWN'; });
+    child.on('close', (exitCode, signal) => {
       clearTimeout(timer); // Never signal a PID/group after its observed exit.
       log.end(() => {
-        if (failed || exitCode !== 0) { no(new Error('M5_REGRESSION_TASK_FAILED')); return; }
-        yes({ exitCode, stdout, logSha256: sha256(readFileSync(logFile)) });
+        let output = '';
+        try { output = readFileSync(logFile); }
+        catch { failure = 'LOG_IO'; }
+        if (failure || exitCode !== 0) {
+          const error = new Error('M5_REGRESSION_TASK_FAILED');
+          error.diagnostics = safeTaskDiagnostics(output.toString(), exitCode, signal, failure ?? 'EXIT_NONZERO');
+          if (output.length) error.logSha256 = sha256(output);
+          no(error); return;
+        }
+        yes({ exitCode, stdout, logSha256: sha256(output) });
       });
     });
   });
@@ -87,11 +95,12 @@ async function main() {
       if (releaseFingerprint(root).sha256 !== fingerprint.sha256) throw new Error('M5_REGRESSION_CANDIDATE_CHANGED');
       const start = performance.now();
       try {
-        const result = await command(taskArguments(task, directory), env, resolve(directory, `${task.replaceAll(':', '-')}.log`));
+        const result = await command(taskArguments(task, directory), taskEnvironment(env, task), resolve(directory, `${task.replaceAll(':', '-')}.log`));
         report.tasks.push({ task, outcome: 'PASS', exitCode: result.exitCode, cached: false,
           durationMs: Math.ceil(performance.now() - start), logSha256: result.logSha256 });
       } catch (error) {
-        report.tasks.push({ task, outcome: 'FAIL', exitCode: null, cached: false, durationMs: Math.ceil(performance.now() - start) });
+        report.tasks.push({ task, outcome: 'FAIL', ...error.diagnostics, logSha256: error.logSha256,
+          cached: false, durationMs: Math.ceil(performance.now() - start) });
         throw error;
       }
     }

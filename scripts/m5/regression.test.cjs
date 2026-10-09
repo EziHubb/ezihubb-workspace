@@ -5,9 +5,27 @@ const { tmpdir } = require('node:os');
 const { resolve } = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { TASKS, SCOPE, assertCleanCheckout, assertRegressionRuntime, regressionEnvironment, taskArguments,
-  assertResolvedProject, apiTestInventory, jestSummary, assertRegressionEvidence } = require('./regression.cjs');
+  assertResolvedProject, apiTestInventory, jestSummary, assertRegressionEvidence, taskEnvironment, safeTaskDiagnostics } = require('./regression.cjs');
 const { connectionOptions, allowedConnection } = require('./regression-network.cjs');
 const root = resolve(__dirname, '../..');
+test('production tasks use production React/Next environment; only Jest uses test', () => {
+  const env = regressionEnvironment(root, 13002, '/private');
+  assert.equal(env.NODE_ENV, 'production');
+  for (const task of TASKS) {
+    assert.equal(taskEnvironment(env, task).NODE_ENV, task === 'api:test' ? 'test' : 'production');
+    assert.equal(taskEnvironment(env, task).NODE_OPTIONS, env.NODE_OPTIONS);
+  }
+  assert.throws(() => taskEnvironment(env, 'unknown'), /M5_REGRESSION_TASK/);
+});
+test('failure diagnostics retain exit/signal/hash context without disclosing logs', () => {
+  const output = 'PRIVATE-CANARY https://private.test/token=SECRET\nError occurred prerendering\nM5_REGRESSION_EGRESS_DENIED';
+  const details = safeTaskDiagnostics(output, 1, null, 'EXIT_NONZERO');
+  assert.equal(details.exitCode, 1);
+  assert.deepEqual(details.markers, ['NETWORK_POLICY_DENIED', 'NEXT_PRERENDER_FAILED']);
+  assert(!JSON.stringify(details).includes('PRIVATE') && !JSON.stringify(details).includes('SECRET'));
+  assert.equal(safeTaskDiagnostics('', null, 'SIGKILL', 'TIMEOUT').failure, 'TIMEOUT');
+  assert.equal(safeTaskDiagnostics('', null, 'PRIVATE', 'PRIVATE').signal, null);
+});
 function evidence() {
   return { version: 'm5.5-regression-v1', action: 'run', outcome: 'PASS', scope: SCOPE,
     regressionVerified: true, browserVerified: false, nativeVerified: false, providerOperations: false,

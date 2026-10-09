@@ -7,6 +7,17 @@ datasource db {
   provider = "postgresql"
 }
 
+// Authenticated delivery effects only; no webhook payload, email or secrets.
+// Kept independently of order deletion so an old event cannot be reapplied.
+model TrackingDeliveryReceipt {
+  id        String   @id @default(dbgenerated("nanoid(12)"))
+  eventHash String   @unique
+  orderId   String
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+}
+
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
 // Dormant prospective settlement foundation. Absence of EconomicOrderContext

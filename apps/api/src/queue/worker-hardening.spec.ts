@@ -4,6 +4,7 @@ import { JOBS } from './queue.constants';
 import axios from 'axios';
 jest.mock('replicate', () => ({ __esModule: true, default: class {} }));
 jest.mock('axios');
+jest.mock('./critical-job-alert', () => ({ sendCriticalJobAlert: jest.fn().mockResolvedValue('SMTP_ACCEPTED') }));
 
 describe('Worker failure truth and diagnostics', () => {
   it.each(['missing-key', 'provider-timeout', 'storage-failure'])('does not return original image as completed on %s', async (failure) => {

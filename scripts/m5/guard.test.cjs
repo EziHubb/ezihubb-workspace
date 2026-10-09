@@ -2,8 +2,97 @@ const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
+const { assertPublishedPorts, waitForDatabaseIdentity } = require('./readiness.cjs');
+const { relayTargets } = require('./loopback-relay.cjs');
+const { Worker } = require('node:worker_threads');
+const net = require('node:net');
+
+function relayFixture() {
+  const name = 'ezihubb-m5_isolated', networkId = 'a'.repeat(64);
+  const containers = Object.entries(IMAGES).map(([service, image], index) => ({
+    Id: String(index + 1).repeat(64), Config: { Image: image, Labels: { 'com.docker.compose.project': 'ezihubb-m5', 'com.docker.compose.service': service } },
+    State: { Running: true }, HostConfig: { PortBindings: Object.fromEntries(Object.entries(PORTS[service]).map(([port, HostPort]) => [port, [{ HostIp: '127.0.0.1', HostPort }]])) },
+    NetworkSettings: { Ports: {}, Networks: { [name]: { NetworkID: networkId, IPAddress: `172.20.0.${index + 2}` } } },
+  }));
+  const network = { Name: name, Id: networkId, Internal: true, Driver: 'bridge', Labels: { 'com.docker.compose.project': 'ezihubb-m5' },
+    Containers: Object.fromEntries(containers.map(row => [row.Id, { IPv4Address: `${row.NetworkSettings.Networks[name].IPAddress}/16` }])) };
+  return { containers, network };
+}
+test('every production Compose service has bounded JSON logs without inspecting private environment', () => {
+  const yaml = require(require.resolve('yaml', { paths: [require.resolve('nx')] }));
+  const compose = yaml.parse(readFileSync(resolve(__dirname, '../../docker-compose.yml'), 'utf8'));
+  assert.equal(Object.keys(compose.services).length, 6);
+  for (const service of Object.values(compose.services)) {
+    assert.deepEqual(service.logging, { driver: 'json-file', options: { 'max-size': '10m', 'max-file': '3' } });
+  }
+});
+test('internal-network relay can target only exact owned Docker identities and fixed loopback ports', () => {
+  const h = relayFixture(); const targets = relayTargets(h.containers, h.network);
+  assert.equal(targets.length, 6); assert.deepEqual(targets[0], { host: '172.20.0.2', targetPort: 5432, listenPort: 15432 });
+  for (const mutation of [
+    state => { state.network.Internal = false; }, state => { state.network.Labels['com.docker.compose.project'] = 'production'; },
+    state => { state.network.Containers.extra = {}; }, state => { state.containers[0].Config.Image = 'postgres:latest'; },
+    state => { state.containers[0].NetworkSettings.Networks.evil = {}; },
+    state => { state.containers[0].NetworkSettings.Networks.ezihubb_m5_isolated = { IPAddress: '8.8.8.8' }; },
+    state => { state.network.Containers[state.containers[0].Id].IPv4Address = '172.20.0.99/16'; },
+    state => { state.containers[0].NetworkSettings.Ports['5432/tcp'] = [{ HostIp: '0.0.0.0', HostPort: '15432' }]; },
+  ]) {
+    const state = relayFixture(); mutation(state);
+    assert.throws(() => relayTargets(state.containers, state.network), /^Error: M5_/);
+  }
+  h.containers[0].NetworkSettings.Ports['5432/tcp'] = [{ HostIp: '127.0.0.1', HostPort: '15432' }];
+  assert.equal(relayTargets(h.containers, h.network).length, 5);
+});
+test('owned relay worker forwards actual TCP bytes, binds only loopback and closes on termination (UNIT)', { timeout: 10_000 }, async () => {
+  const echo = net.createServer(socket => socket.pipe(socket));
+  await new Promise(yes => echo.listen(0, '127.0.0.1', yes));
+  const worker = new Worker(resolve(__dirname, 'loopback-relay-worker.cjs'), {
+    workerData: [{ host: '127.0.0.1', targetPort: echo.address().port, listenPort: 0 }], env: {}, execArgv: [],
+  });
+  let client;
+  try {
+    const ready = await new Promise((yes, no) => { worker.once('message', yes); worker.once('error', no); });
+    assert.equal(ready.outcome, 'READY');
+    const reply = await new Promise((yes, no) => {
+      client = net.connect({ host: '127.0.0.1', port: ready.ports[0] }, () => client.write('unit-proxy-bytes'));
+      client.once('data', bytes => yes(bytes.toString())); client.once('error', no);
+    });
+    assert.equal(reply, 'unit-proxy-bytes');
+    client.destroy(); await worker.terminate();
+    await assert.rejects(new Promise((yes, no) => {
+      const probe = net.connect({ host: '127.0.0.1', port: ready.ports[0] }, () => { probe.destroy(); yes(); });
+      probe.once('error', no);
+    }));
+  } finally { client?.destroy(); await worker.terminate(); await new Promise(yes => echo.close(yes)); }
+});
+
+test('actual published loopback ports are required, not just declared HostConfig bindings', () => {
+  const rows = Object.entries(PORTS).map(([service, ports]) => ({
+    Config: { Labels: { 'com.docker.compose.service': service } },
+    NetworkSettings: { Ports: Object.fromEntries(Object.entries(ports).map(([port, HostPort]) => [port, [{ HostIp: '127.0.0.1', HostPort }]])) },
+  }));
+  assertPublishedPorts(rows);
+  for (const mutation of [r => { r[0].NetworkSettings.Ports = {}; }, r => { r[0].NetworkSettings.Ports['5432/tcp'] = null; },
+    r => { r[0].NetworkSettings.Ports['5432/tcp'][0].HostIp = '0.0.0.0'; }]) {
+    const changed = structuredClone(rows); mutation(changed);
+    assert.throws(() => assertPublishedPorts(changed), /M5_HOST_PORT_NOT_PUBLISHED/);
+  }
+});
+test('host readiness retries transient connection errors but never identity or auth failures', async () => {
+  const env = generateEnvironment(); let attempts = 0, delays = 0;
+  const pool = { query: async sql => {
+    if (++attempts <= 2) throw Object.assign(new Error('PRIVATE'), { code: 'ECONNREFUSED' });
+    return { rows: sql.includes('current_database') ? [{ database: DATABASES[0], role: 'ezihubb_m5', privileged: false }] : [{ token: env.M5_DATABASE_TOKEN }] };
+  } };
+  await waitForDatabaseIdentity(pool, env, DATABASES[0], async () => { delays++; });
+  assert.equal(delays, 2);
+  await assert.rejects(waitForDatabaseIdentity({ query: async () => { throw Object.assign(new Error('PRIVATE'), { code: '28P01' }); } }, env, DATABASES[0], async () => { throw new Error('must not retry'); }), /PRIVATE/);
+  let refused = 0;
+  await assert.rejects(waitForDatabaseIdentity({ query: async () => { refused++; throw Object.assign(new Error('unreachable'), { code: 'ECONNREFUSED' }); } }, env, DATABASES[0], () => Promise.resolve()), /unreachable/);
+  assert.equal(refused, 60);
+});
 const { GATES, parseEnv, generateEnvironment, assertEnvironment, assertRuntime, cleanChildEnvironment,
-  assertDatabaseIdentity, migrationManifest, IMAGES, PORTS, assertDockerEndpoint, assertComposeConfig, assertOwnedContainers, safeFailureDetails } = require('./guard.cjs');
+  assertDatabaseIdentity, migrationManifest, IMAGES, PORTS, DATABASES, assertDockerEndpoint, assertComposeConfig, assertOwnedContainers, safeFailureDetails } = require('./guard.cjs');
 
 test('failure diagnostics export only allowlisted driver codes, never raw errors or metadata', () => {
   for (const code of ['P2021', '42P01', '23505', 'ECONNREFUSED']) {

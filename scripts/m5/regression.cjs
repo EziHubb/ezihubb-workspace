@@ -37,7 +37,7 @@ function regressionEnvironment(root, fixturePort, privateDirectory) {
   if (!Number.isSafeInteger(fixturePort) || fixturePort < 1024 || fixturePort > 65535) throw new Error('M5_REGRESSION_FIXTURE_PORT');
   const origin = `http://127.0.0.1:${fixturePort}`;
   const env = cleanChildEnvironment(generateEnvironment());
-  return { ...env, NODE_ENV: 'test', CI: 'true', NX_DAEMON: 'false', NX_NO_CLOUD: 'true', NX_ISOLATE_PLUGINS: 'false', NX_LOAD_DOT_ENV_FILES: 'false',
+  return { ...env, NODE_ENV: 'production', CI: 'true', NX_DAEMON: 'false', NX_NO_CLOUD: 'true', NX_ISOLATE_PLUGINS: 'false', NX_LOAD_DOT_ENV_FILES: 'false',
     NEXT_TELEMETRY_DISABLED: '1', API_URL: origin, NEXT_PUBLIC_API_URL: origin, APP_URL: origin, CLIENT_URL: origin,
     ADMIN_URL: origin, NEXTAUTH_URL: origin, NEXT_PUBLIC_ADMIN_URL: origin, NEXT_PUBLIC_CLIENT_URL: origin,
     NEXT_PUBLIC_SITE_URL: origin, NEXTAUTH_SECRET: randomBytes(32).toString('hex'),
@@ -50,6 +50,25 @@ function regressionEnvironment(root, fixturePort, privateDirectory) {
     GOOGLE_CLIENT_ID: '', GOOGLE_CLIENT_SECRET: '', SENTRY_DSN: '', AXIOM_TOKEN: '',
     M5_REGRESSION_FIXTURE_PORT: String(fixturePort), M5_REGRESSION_PRIVATE_DIRECTORY: privateDirectory,
     NODE_OPTIONS: `--require=${JSON.stringify(resolve(root, 'scripts/m5/regression-network.cjs'))}` };
+}
+function taskEnvironment(env, task) {
+  if (!TASKS.includes(task)) throw new Error('M5_REGRESSION_TASK');
+  return { ...env, NODE_ENV: task === 'api:test' ? 'test' : 'production' };
+}
+// Publish classifications, never matching text, URLs, paths or arbitrary logs.
+function safeTaskDiagnostics(output, exitCode, signal, failure) {
+  const markers = [
+    ['NETWORK_POLICY_DENIED', /M5_REGRESSION_EGRESS_DENIED/],
+    ['NONSTANDARD_NODE_ENV', /non-standard.*NODE_ENV/i],
+    ['NEXT_PRERENDER_FAILED', /Error occurred prerendering|prerender-error/],
+    ['REACT_CONTEXT_FAILED', /Cannot read properties of null \(reading ['"]useContext['"]\)/],
+    ['TYPECHECK_FAILED', /error TS\d{4}:|Type error:/],
+    ['FONT_DOWNLOAD_FAILED', /Failed to fetch.*font|next\/font.*error/i],
+    ['MEMORY_LIMIT', /heap out of memory|Allocation failed/i],
+  ].filter(([, pattern]) => pattern.test(output)).map(([name]) => name);
+  return { exitCode: Number.isInteger(exitCode) ? exitCode : null,
+    signal: ['SIGKILL', 'SIGTERM', 'SIGABRT', 'SIGSEGV'].includes(signal) ? signal : null,
+    failure: ['TIMEOUT', 'OUTPUT_LIMIT', 'LOG_IO', 'SPAWN', 'EXIT_NONZERO'].includes(failure) ? failure : 'EXIT_NONZERO', markers };
 }
 function taskArguments(task, privateDirectory) {
   if (!TASKS.includes(task)) throw new Error('M5_REGRESSION_TASK');
@@ -141,5 +160,5 @@ function assertRegressionEvidence(report, candidate, nodeVersion) {
     || report.jest?.testFiles !== report.jest?.suites || !/^[a-f0-9]{64}$/.test(report.jest?.inventorySha256 ?? '')
     || !/^[a-f0-9]{64}$/.test(report.jest?.reportSha256 ?? '')) throw new Error('M5_REGRESSION_INCOMPLETE');
 }
-module.exports = { TASKS, SCOPE, assertCleanCheckout, assertRegressionRuntime, regressionEnvironment,
+module.exports = { TASKS, SCOPE, assertCleanCheckout, assertRegressionRuntime, regressionEnvironment, taskEnvironment, safeTaskDiagnostics,
   taskArguments, assertResolvedProject, apiTestInventory, jestSummary, readJestSummary, assertRegressionEvidence, sha256 };

@@ -4,6 +4,9 @@ Updated: 2026-10-08. **NO-GO; M5 is not closed.** The read-only dossier/check is
 implemented, not a deployment executor or payment activation request. The scope
 remains step 5 of [the owner-approved plan](next-five-actions-approval-plan.md).
 
+Latest audit corrections and their local/native/external verification boundaries
+are recorded in [2026-10-09 remediation](issue-remediation-2026-10-09.md).
+
 ## Commands and artifacts
 
 | Nx target | Meaning | Exit behavior |

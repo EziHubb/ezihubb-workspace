@@ -22,8 +22,13 @@ test('entire additive migration chain executes on disposable WASM PostgreSQL', {
     const user = (await db.query('SELECT id,email FROM "User"')).rows[0];
     assert.match(user.id, /^[A-Za-z0-9]{12}$/);
     assert.equal(user.email, 'before-m4@ezihubb.test');
-    for (const name of ['EconomicOrderContext', 'EconomicCapture', 'EconomicRefund', 'EconomicOutbox', 'EconomicConsumerReceipt']) {
+    for (const name of ['EconomicOrderContext', 'EconomicCapture', 'EconomicRefund', 'EconomicOutbox', 'EconomicConsumerReceipt', 'TrackingDeliveryReceipt']) {
       assert((await db.query('SELECT to_regclass($1) AS relation', [`public."${name}"`])).rows[0].relation, `missing ${name}`);
     }
+    // Receipt ownership deliberately survives order removal. This is SQL
+    // uniqueness/default coverage, not native webhook concurrency evidence.
+    const receipt = (await db.query('INSERT INTO "TrackingDeliveryReceipt" ("eventHash", "orderId") VALUES ($1, $2) RETURNING id', ['unit-hash', 'removed-order'])).rows[0];
+    assert.match(receipt.id, /^[A-Za-z0-9]{12}$/);
+    await assert.rejects(db.query('INSERT INTO "TrackingDeliveryReceipt" ("eventHash", "orderId") VALUES ($1, $2)', ['unit-hash', 'another-order']), error => error.code === '23505');
   } finally { await db.close(); }
 });

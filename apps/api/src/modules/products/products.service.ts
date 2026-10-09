@@ -1323,7 +1323,9 @@ export class ProductsService {
     };
     const days  = RANGE_DAYS[range] ?? 30;
     const now   = new Date();
-    const since = new Date(now.getTime() - days * 24 * 60 * 60 * 1_000);
+    // UTC calendar buckets include today, not a truncated day at either end.
+    const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const since = range === 'all' ? new Date(0) : new Date(today - (days - 1) * 24 * 60 * 60 * 1_000);
     // Previous period of same length (for trend calculation)
     const prevSince = new Date(since.getTime() - days * 24 * 60 * 60 * 1_000);
 
@@ -1396,13 +1398,9 @@ export class ProductsService {
     const revenue         = dailyChart.reduce((sum, row) => sum + Number(row.revenue), 0);
     const prevRevenueAmt  = prevDailyChart.reduce((sum, row) => sum + Number(row.revenue), 0);
 
-    // Estimated views for the selected period (proportional to total)
-    const ageMs  = product ? now.getTime() - product.createdAt.getTime() : 1;
-    const ratio  = days * 24 * 60 * 60 * 1_000 / ageMs;
-    const views  = Math.min(viewsTotal, Math.round(viewsTotal * Math.min(ratio, 1)));
-    const prevViews = Math.round(views * 0.85); // 15% lower previous period
-
-    const convRate = views > 0 ? (ordersCount / views) * 100 : 0;
+    // Only a lifetime counter exists. There are no time-bucketed view events
+    // or referrers, so period views, their trend and conversion are UNKNOWN.
+    const views = range === 'all' ? viewsTotal : null;
 
     // Trend helpers — null if no data
     const trend = (curr: number, prev: number): number | null =>
@@ -1412,42 +1410,46 @@ export class ProductsService {
     const chartMap = new Map(
       dailyChart.map((r) => [r.day, { orders: Number(r.orders), revenue: Number(r.revenue) }]),
     );
-    const chartData: { date: string; views: number; orders: number; revenue: number }[] = [];
-    for (let i = 0; i < Math.min(days, 365); i++) {
-      const d   = new Date(since.getTime() + i * 24 * 60 * 60 * 1_000);
+    const chartData: { date: string; views: null; orders: number; revenue: number }[] = [];
+    const chartDays = Math.min(days, 365);
+    const chartSince = new Date(today - (chartDays - 1) * 24 * 60 * 60 * 1_000);
+    for (let i = 0; i < chartDays; i++) {
+      const d   = new Date(chartSince.getTime() + i * 24 * 60 * 60 * 1_000);
       const key = d.toISOString().slice(0, 10);
       const row = chartMap.get(key);
       chartData.push({
         date:    key,
-        views:   Math.round((views / days) * (0.6 + Math.random() * 0.8)),
+        views:   null,
         orders:  row?.orders ?? 0,
         revenue: row?.revenue ?? 0,
       });
     }
 
-    // Traffic sources (estimated — real analytics would come from a separate tracking table)
-    const trafficSources = [
-      { name: 'Direct search',  views: Math.round(views * 0.45), percent: 45 },
-      { name: 'Shop home',      views: Math.round(views * 0.30), percent: 30 },
-      { name: 'External',       views: Math.round(views * 0.25), percent: 25 },
-    ];
+    const trafficSources: { name: string; views: number; percent: number }[] = [];
 
     return {
       // KPI values
       financeReporting: LEGACY_FINANCE_REPORT,
+      analyticsReporting: {
+        periodViews: 'UNAVAILABLE_NO_EVENT_HISTORY',
+        trafficSources: 'UNAVAILABLE_NO_ATTRIBUTION',
+        conversionRate: 'UNAVAILABLE_NO_PERIOD_VIEWS',
+        lifetimeViews: 'CUMULATIVE_COUNTER_NOT_UNIQUE_VISITORS',
+        chartTimezone: 'UTC', chartDays,
+      },
       views,
       viewsTotal,
       favorites,
       orders:    ordersCount,
       ordersTotal: product?.soldCount ?? 0,
       revenue:   Math.round(revenue * 100) / 100,
-      conversionRate: Math.round(convRate * 10) / 10,
+      conversionRate: null,
       avgRating: reviews._avg.rating ? Math.round(reviews._avg.rating * 10) / 10 : null,
       reviewCount: reviews._count._all,
       // Trends vs previous period
-      viewsTrend:    trend(views, prevViews),
-      ordersTrend:   trend(ordersCount, prevOrdersCount),
-      revenueTrend:  trend(revenue, prevRevenueAmt),
+      viewsTrend:    null,
+      ordersTrend:   range === 'all' ? null : trend(ordersCount, prevOrdersCount),
+      revenueTrend:  range === 'all' ? null : trend(revenue, prevRevenueAmt),
       favoritesTrend: null,
       // Chart
       chartData,

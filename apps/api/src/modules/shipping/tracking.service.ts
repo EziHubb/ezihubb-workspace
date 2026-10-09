@@ -94,12 +94,14 @@ export class TrackingService {
   parseWebhookEvent(
     body: unknown,
   ): { trackerId: string; status: string; trackingCode: string | null } | null {
+    if (!body || typeof body !== 'object') return null;
     const evt = body as {
       description?: string;
       result?: { id?: string; status?: string; tracking_code?: string };
     };
-    if (!evt.description?.startsWith('tracker.')) return null;
-    if (!evt.result?.id || !evt.result?.status) return null;
+    if (typeof evt.description !== 'string' || !evt.description.startsWith('tracker.')) return null;
+    if (typeof evt.result?.id !== 'string' || !evt.result.id || typeof evt.result.status !== 'string' || !evt.result.status) return null;
+    if (evt.result.tracking_code != null && typeof evt.result.tracking_code !== 'string') return null;
     return {
       trackerId:    evt.result.id,
       status:       evt.result.status,

@@ -16,17 +16,17 @@ import type { AdminProductDto } from '../types';
 
 type Range = '7d' | '30d' | '90d' | '1y' | 'all';
 
-interface ChartPoint  { date: string; views: number; orders: number; revenue: number }
+interface ChartPoint  { date: string; views: number | null; orders: number; revenue: number }
 interface TrafficSource { name: string; views: number; percent: number }
 
 interface PerformanceData {
-  views:          number;
+  views:          number | null;
   viewsTotal:     number;
   favorites:      number;
   orders:         number;
   ordersTotal:    number;
   revenue:        number;
-  conversionRate: number;
+  conversionRate: number | null;
   avgRating:      number | null;
   reviewCount:    number;
   viewsTrend:     number | null;
@@ -113,7 +113,7 @@ function QualityCheck({ label, passed }: { label: string; passed: boolean }) {
 
 function PerformanceSkeleton() {
   return (
-    <div className="max-w-[900px] mx-auto px-6 py-8 space-y-6 animate-pulse">
+    <div aria-busy="true" aria-label="Loading performance data" className="max-w-[900px] mx-auto px-6 py-8 space-y-6 animate-pulse motion-reduce:animate-none">
       <div className="flex gap-2">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="h-8 w-24 bg-muted/10 rounded-full" />
@@ -137,14 +137,19 @@ interface PerformanceTabProps { product: AdminProductDto }
 export function PerformanceTab({ product }: PerformanceTabProps) {
   const [range, setRange] = useState<Range>('30d');
 
-  const { data, isLoading, isFetching } = useQuery<PerformanceData>({
+  const { data, isLoading, isFetching, isError, refetch } = useQuery<PerformanceData>({
     queryKey: ['product-performance', product.id, range],
     queryFn:  () => api.get<PerformanceData>(`/admin/products/${product.id}/performance?range=${range}`),
     staleTime: 5 * 60_000,
-    placeholderData: (prev) => prev,
   });
 
   if (isLoading) return <PerformanceSkeleton />;
+  if (isError) return (
+    <div role="alert" className="max-w-[900px] mx-auto px-6 py-8 space-y-3">
+      <p className="text-sm text-secondary">Performance data could not be loaded. Please try again.</p>
+      <button type="button" onClick={() => void refetch()} className="min-h-11 px-4 border border-border rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">Try again</button>
+    </div>
+  );
 
   const d        = data;
   const pubDate  = product.publishedAt ?? product.createdAt;
@@ -155,7 +160,7 @@ export function PerformanceTab({ product }: PerformanceTabProps) {
   const titleLen     = (product.name ?? '').length;
 
   return (
-    <div className={`max-w-[900px] mx-auto px-6 py-8 space-y-8 transition-opacity ${isFetching ? 'opacity-60' : 'opacity-100'}`}>
+    <div aria-busy={isFetching} className={`max-w-[900px] mx-auto px-6 py-8 space-y-8 transition-opacity motion-reduce:transition-none ${isFetching ? 'opacity-60' : 'opacity-100'}`}>
 
       {/* Header */}
       <div>
@@ -172,6 +177,7 @@ export function PerformanceTab({ product }: PerformanceTabProps) {
             key={r.id}
             type="button"
             onClick={() => setRange(r.id)}
+            aria-pressed={range === r.id}
             className={[
               'px-3 py-1.5 text-xs font-semibold rounded-full border transition-all',
               range === r.id
@@ -184,20 +190,25 @@ export function PerformanceTab({ product }: PerformanceTabProps) {
         ))}
       </div>
 
+      <p role="note" className="text-sm text-muted bg-surface border border-border rounded-card p-4">
+        Period views, conversion rate and traffic sources are not available yet. Views are recorded only as a lifetime counter, not unique visitors. No estimated traffic is shown.
+        {' '}Orders and revenue below use legacy order records; they are not verified payment or payout totals.
+      </p>
+
       {/* KPI row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <KpiCard
-          label="Views"
-          value={fmtNum(d?.views)}
+          label={range === 'all' ? 'Lifetime views' : 'Views (not available)'}
+          value={d?.views == null ? '—' : fmtNum(d.views)}
           trend={d?.viewsTrend}
         />
         <KpiCard
-          label="Favorites"
+          label="Current favorites"
           value={fmtNum(d?.favorites)}
           trend={d?.favoritesTrend}
         />
         <KpiCard
-          label="Orders"
+          label="Order items"
           value={fmtNum(d?.orders)}
           trend={d?.ordersTrend}
         />
@@ -212,23 +223,23 @@ export function PerformanceTab({ product }: PerformanceTabProps) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-background border border-border rounded-card px-4 py-3 text-center">
           <p className="text-[11px] text-muted uppercase tracking-wide mb-0.5">Conversion rate</p>
-          <p className="text-lg font-bold text-secondary tabular-nums">{fmtPercent(d?.conversionRate)}</p>
+          <p className="text-lg font-bold text-secondary tabular-nums">{d?.conversionRate == null ? 'Not available' : fmtPercent(d.conversionRate)}</p>
         </div>
         <div className="bg-background border border-border rounded-card px-4 py-3 text-center">
-          <p className="text-[11px] text-muted uppercase tracking-wide mb-0.5">Avg. rating</p>
+          <p className="text-[11px] text-muted uppercase tracking-wide mb-0.5">Lifetime avg. rating</p>
           <p className="text-lg font-bold text-secondary tabular-nums">
             {d?.avgRating ? `${fmtFixed(d.avgRating, 1)} ★` : '—'}
           </p>
         </div>
         <div className="bg-background border border-border rounded-card px-4 py-3 text-center">
-          <p className="text-[11px] text-muted uppercase tracking-wide mb-0.5">Total sold</p>
+          <p className="text-[11px] text-muted uppercase tracking-wide mb-0.5">Lifetime total sold</p>
           <p className="text-lg font-bold text-secondary tabular-nums">{fmtNum(d?.ordersTotal)}</p>
         </div>
       </div>
 
-      {/* Views over time chart */}
+      {/* Real order records, never a fabricated view series. */}
       <div>
-        <h4 className="text-sm font-semibold text-secondary mb-3">Views over time</h4>
+        <h3 className="text-sm font-semibold text-secondary mb-3">Order items over time (UTC){range === 'all' ? ' — last 365 days' : ''}</h3>
         <div className="bg-surface border border-border rounded-card p-4 shadow-card">
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart
@@ -236,7 +247,7 @@ export function PerformanceTab({ product }: PerformanceTabProps) {
               margin={{ top: 4, right: 4, left: -10, bottom: 0 }}
             >
               <defs>
-                <linearGradient id="viewsGrad" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="ordersGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor="#E85D3F" stopOpacity={0.15} />
                   <stop offset="95%" stopColor="#E85D3F" stopOpacity={0}    />
                 </linearGradient>
@@ -260,16 +271,27 @@ export function PerformanceTab({ product }: PerformanceTabProps) {
               />
               <Tooltip content={<ChartTooltip />} cursor={{ stroke: '#E85D3F', strokeWidth: 1, strokeDasharray: '4 4' }} />
               <Area
-                type="monotone"
-                dataKey="views"
+                type="linear"
+                dataKey="orders"
+                isAnimationActive={false}
                 stroke="#E85D3F"
                 strokeWidth={2}
-                fill="url(#viewsGrad)"
+                fill="url(#ordersGrad)"
                 dot={false}
                 activeDot={{ r: 4, fill: '#E85D3F', strokeWidth: 0 }}
               />
             </AreaChart>
           </ResponsiveContainer>
+          <details className="mt-3 text-sm text-muted">
+            <summary className="cursor-pointer py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">View daily order data</summary>
+            <div className="max-h-64 overflow-auto">
+              <table className="w-full text-left text-sm">
+                <caption className="sr-only">Daily legacy order items and revenue in UTC</caption>
+                <thead><tr><th scope="col">Date (UTC)</th><th scope="col">Order items</th><th scope="col">Revenue</th></tr></thead>
+                <tbody>{(d?.chartData ?? []).map(row => <tr key={row.date}><th scope="row" className="font-normal">{row.date}</th><td>{fmtNum(row.orders)}</td><td>{fmtAmount(row.revenue)}</td></tr>)}</tbody>
+              </table>
+            </div>
+          </details>
         </div>
       </div>
 
