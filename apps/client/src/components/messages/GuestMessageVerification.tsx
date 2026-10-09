@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useLocale } from 'next-intl';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { Button, Input } from '@ezihubb/ui';
 
 /** Inline fieldset, not a nested form: reusable in message composer and recovery. */
 export function GuestMessageVerification({ email, onVerified }: { email: string; onVerified: (email: string) => void }) {
@@ -47,23 +48,20 @@ export function GuestMessageVerification({ email, onVerified }: { email: string;
     } finally { inFlight.current = false; setPending(false); }
   }
 
-  return <fieldset disabled={pending} className="space-y-3 rounded-lg border border-border p-4" aria-busy={pending}>
+  return <fieldset disabled={pending} className="space-y-3 rounded-card border border-border bg-surface p-4" aria-busy={pending}>
     <legend className="px-1 text-sm font-semibold">{vi ? 'Xác minh email để nhắn tin' : 'Verify your email for messaging'}</legend>
     <p className="text-sm text-muted">{vi ? 'Chúng tôi sẽ gửi mã xác minh qua email để bảo vệ hội thoại của bạn. Không cần tạo tài khoản.' : 'We will email a code to protect your conversations. No account is required.'}</p>
     {hasChallenge && <>
       <p role="status" className="text-sm">{vi ? 'Đã yêu cầu gửi mã đến' : 'Code requested for'} {challenge.email}. {vi ? 'Mã có hiệu lực 15 phút.' : 'The code is valid for 15 minutes.'}</p>
-      <label htmlFor={id} className="block space-y-2 text-sm font-medium"><span>{vi ? 'Mã xác minh email' : 'Email verification code'}</span>
-      <input ref={input} id={id} value={code} onChange={(e) => setCode(e.target.value)} type="text" inputMode="numeric" autoComplete="one-time-code"
-        maxLength={8} aria-invalid={!!error} aria-describedby={`${id}-error`}
-        className="min-h-11 w-full rounded-lg border border-border px-3 py-2 focus-visible:ring-2 focus-visible:ring-primary" />
-      </label>
-      <button type="button" onClick={() => void act(true)} className="min-h-11 rounded-button bg-primary px-4 py-2 font-medium text-white disabled:opacity-50">
+      <Input label={vi ? 'Mã xác minh email' : 'Email verification code'} ref={input} id={id} value={code} onChange={(e) => setCode(e.target.value)} type="text" inputMode="numeric" autoComplete="one-time-code"
+        maxLength={8} error={error} fullWidth className="min-h-11" />
+      <Button type="button" onClick={() => void act(true)} disabled={pending}>
         {pending ? (vi ? 'Đang xác minh…' : 'Verifying…') : (vi ? 'Xác minh email' : 'Verify email')}
-      </button>
+      </Button>
     </>}
-    <p id={`${id}-error`} role="alert" className="text-sm text-error">{error}</p>
-    <button type="button" onClick={() => void act(false)} className="min-h-11 rounded-button border border-border px-4 py-2 text-sm disabled:opacity-50">
+    {!hasChallenge && <p id={`${id}-error`} role="alert" className="text-sm text-error">{error}</p>}
+    <Button type="button" variant="secondary" onClick={() => void act(false)} disabled={pending}>
       {pending ? (vi ? 'Đang xử lý…' : 'Please wait…') : hasChallenge ? (vi ? 'Gửi lại mã' : 'Send another code') : (vi ? 'Gửi mã qua email' : 'Email me a code')}
-    </button>
+    </Button>
   </fieldset>;
 }

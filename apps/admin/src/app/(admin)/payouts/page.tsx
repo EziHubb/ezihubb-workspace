@@ -13,6 +13,7 @@ import { fmtAmount, fmtDate, capitalize } from '../../../lib/fmt';
 import { PlatformCapturedFinances } from '../../../components/finances/PlatformCapturedFinances';
 import { FilterSelect, type FilterOption } from '../../../components/ui/FilterSelect';
 import { useAdminMode } from '../../../lib/store-context';
+import { FINANCE_REPORT_QUERY_KEYS } from '../../../lib/finance-query-keys';
 
 interface PayoutStats {
   pendingCount:      number;
@@ -251,7 +252,7 @@ export default function AdminPayoutsPage() {
       <AdminPageHeader
         title="Verified balances & payouts"
         subtitle="Inspect seller and affiliate funds, allocations and settlement evidence"
-        queryKey={['captured-finances']}
+        queryKeys={FINANCE_REPORT_QUERY_KEYS}
       />
       <PlatformCapturedFinances />
       <details className="mt-8 border border-border rounded-card p-5">

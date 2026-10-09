@@ -7,7 +7,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES, newClientMessageId } from '@ezihubb/constants';
 import { useAuthStore } from '../../lib/store/auth.store';
-import { TypingIndicator } from '@ezihubb/ui';
+import { Button, TypingIndicator } from '@ezihubb/ui';
 import { useConversationStream, usePresence, presenceLabel, useTyping } from '../../lib/realtime';
 import type { ConversationWithMessagesDto, MessagePageDto } from '@ezihubb/types';
 import { ShopAvatar } from './ShopAvatar';
@@ -764,9 +764,9 @@ export function MessageThread({
 
   if (isError) return <div className="space-y-4 p-4">
     <p role="alert">{locale === 'vi' ? 'Không thể mở hội thoại. Nếu phiên đã hết hạn, hãy quay lại hộp thư để xác minh lại.' : 'Unable to open this conversation. If your session has expired, return to your inbox to verify again.'}</p>
-    <button type="button" onClick={() => void refetch()} className="min-h-11 rounded-button border border-border px-4 py-2">
+    <Button type="button" variant="secondary" onClick={() => void refetch()}>
       {locale === 'vi' ? 'Thử lại' : 'Try again'}
-    </button>
+    </Button>
   </div>;
 
   return (

@@ -5,8 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api-client';
 import { formatCapturedUsd, MoneyMode, ReconciliationHistory } from '../../lib/economic-finances';
 import { EconomicRefundWorkflow } from './EconomicRefundWorkflow';
+import { Badge, Button, Input, Pagination, Select } from '@ezihubb/ui';
 
-const control = 'min-h-11 w-full rounded-button border border-border px-3 py-2 bg-surface text-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50';
 const states = ['PREPARED', 'DISPATCHED', 'NEEDS_RECONCILIATION', 'SUCCEEDED', 'FAILED'] as const;
 type Filters = { provenance: MoneyMode; state: string; kind: string; reference: string; storeId: string };
 const initialFilters: Filters = { provenance: 'LIVE', state: '', kind: '', reference: '', storeId: '' };
@@ -45,31 +45,20 @@ export function EconomicReconciliationPanel({ actorId }: { actorId: string }) {
     <form className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" onSubmit={event => {
       event.preventDefault(); change({ reference: draftReference.trim(), storeId: draftStore.trim() });
     }}>
-      <label htmlFor="reconciliation-mode" className="space-y-2">Environment
-        <select id="reconciliation-mode" className={control} value={filters.provenance} onChange={event => change({ provenance: event.target.value as MoneyMode })}>
-          <option value="LIVE">Live</option><option value="TEST">Test / sandbox</option>
-        </select>
+      <label htmlFor="reconciliation-mode" className="space-y-1.5 text-sm font-medium">Environment
+        <Select id="reconciliation-mode" value={filters.provenance} onChange={event => change({ provenance: event.target.value as MoneyMode })} options={[{ value: 'LIVE', label: 'Live' }, { value: 'TEST', label: 'Test / sandbox' }]} />
       </label>
-      <label htmlFor="reconciliation-state" className="space-y-2">Operation status
-        <select id="reconciliation-state" className={control} value={filters.state} onChange={event => change({ state: event.target.value })}>
-          <option value="">Unresolved outcomes</option>
-          {states.map(state => <option key={state} value={state}>{state.replaceAll('_', ' ')}</option>)}
-        </select>
+      <label htmlFor="reconciliation-state" className="space-y-1.5 text-sm font-medium">Operation status
+        <Select id="reconciliation-state" value={filters.state} onChange={event => change({ state: event.target.value })} options={[{ value: '', label: 'Unresolved outcomes' }, ...states.map(state => ({ value: state, label: state.replaceAll('_', ' ') }))]} />
       </label>
-      <label htmlFor="reconciliation-kind" className="space-y-2">Operation type
-        <select id="reconciliation-kind" className={control} value={filters.kind} onChange={event => change({ kind: event.target.value })}>
-          <option value="">All operation types</option><option value="PAYMENT_CREATE">Payment creation</option><option value="CAPTURE">Capture</option><option value="REFUND">Refund</option>
-        </select>
+      <label htmlFor="reconciliation-kind" className="space-y-1.5 text-sm font-medium">Operation type
+        <Select id="reconciliation-kind" value={filters.kind} onChange={event => change({ kind: event.target.value })} options={[{ value: '', label: 'All operation types' }, { value: 'PAYMENT_CREATE', label: 'Payment creation' }, { value: 'CAPTURE', label: 'Capture' }, { value: 'REFUND', label: 'Refund' }]} />
       </label>
-      <label htmlFor="reconciliation-reference" className="space-y-2">Order number or transaction reference (exact)
-        <input id="reconciliation-reference" className={control} maxLength={150} value={draftReference} onChange={event => setDraftReference(event.target.value)} />
-      </label>
-      <label htmlFor="reconciliation-store" className="space-y-2">Filter by store ID
-        <input id="reconciliation-store" className={control} maxLength={150} value={draftStore} onChange={event => setDraftStore(event.target.value)} />
-      </label>
-      <div className="flex items-end gap-3">
-        <button type="submit" className={control}>Apply search</button>
-        <button type="button" className={control} disabled={report.isFetching} onClick={() => void report.refetch()}>Refresh</button>
+      <Input label="Order number or transaction reference (exact)" id="reconciliation-reference" fullWidth className="min-h-11" maxLength={150} value={draftReference} onChange={event => setDraftReference(event.target.value)} />
+      <Input label="Filter by store ID" id="reconciliation-store" fullWidth className="min-h-11" maxLength={150} value={draftStore} onChange={event => setDraftStore(event.target.value)} />
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit">Apply search</Button>
+        <Button type="button" variant="secondary" disabled={report.isFetching} onClick={() => void report.refetch()}>Refresh</Button>
       </div>
     </form>
     {(filters.reference || filters.storeId) && <p className="text-sm [overflow-wrap:anywhere]">Applied search: {filters.reference || 'any reference'} · Store: {filters.storeId || 'all stores'}</p>}
@@ -78,13 +67,13 @@ export function EconomicReconciliationPanel({ actorId }: { actorId: string }) {
     </div>
     {(report.isError || (data && !valid)) && <div role="alert" className="border border-error rounded-card p-4 space-y-3">
       <p>Reconciliation data could not be verified. No amounts or outcomes have been assumed.</p>
-      <button type="button" className={control} disabled={report.isFetching} onClick={() => void report.refetch()}>Retry loading reconciliation</button>
+      <Button type="button" variant="secondary" disabled={report.isFetching} onClick={() => void report.refetch()}>Retry loading reconciliation</Button>
     </div>}
     {valid && !report.isError && !report.isFetching && !rows.length && <p>No operations match these filters. Try another status or reference.</p>}
     {rows.map(row => <article key={row.id} className="min-w-0 rounded-card border border-border bg-surface p-4 sm:p-5 space-y-4 [overflow-wrap:anywhere]">
       <div className="flex flex-wrap justify-between gap-3">
         <h3 className="font-semibold">{row.orderNumber} · {row.kind}</h3>
-        <span className="rounded-button border border-border px-3 py-1 text-sm">{row.state.replaceAll('_', ' ')}</span>
+        <Badge>{row.state.replaceAll('_', ' ')}</Badge>
       </div>
       <dl className="grid gap-4 sm:grid-cols-3">
         <div><dt>Expected amount</dt><dd className="font-semibold tabular-nums">{formatCapturedUsd(row.expectedMinor)}</dd></div>
@@ -113,10 +102,6 @@ export function EconomicReconciliationPanel({ actorId }: { actorId: string }) {
         </div>}
       </details>
     </article>)}
-    {valid && !report.isError && <nav aria-label="Reconciliation pages" className="flex flex-wrap items-center gap-3">
-      <button type="button" className={`${control} sm:w-auto`} disabled={page <= 1 || report.isFetching} onClick={() => setPage(page - 1)}>Previous operations</button>
-      <span>Page {page} of {Math.max(1, Math.ceil(data.total / 20))}</span>
-      <button type="button" className={`${control} sm:w-auto`} disabled={page * 20 >= data.total || report.isFetching} onClick={() => setPage(page + 1)}>Next operations</button>
-    </nav>}
+    {valid && !report.isError && <Pagination page={page} totalPages={Math.max(1, Math.ceil(data.total / 20))} onPageChange={setPage} disabled={report.isFetching} labels={{ navAria: 'Reconciliation pages', previousAria: 'Previous operations', nextAria: 'Next operations' }} />}
   </section>;
 }

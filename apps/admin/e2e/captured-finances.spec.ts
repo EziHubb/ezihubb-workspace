@@ -1,4 +1,4 @@
-import { expect, test, Page } from '@playwright/test';
+import { expect, test, Page, Locator } from '@playwright/test';
 import { encode } from 'next-auth/jwt';
 import { formatCapturedUsd, minorToUsdInput, usdInputToMinor } from '../src/lib/economic-finances';
 
@@ -34,6 +34,10 @@ const overview = { version: 'economic-v1', currency: 'USD', minorExponent: 2, be
   capturedMinor: '10000', availableMinor: '5000', pendingMinor: '1000', heldMinor: '1000', reservedMinor: '1000', paidMinor: '2000', debtMinor: '0',
   minimumPayoutMinor: '1', payoutRequestsEnabled: true };
 const history = { data: [], total: 0, page: 1, limit: 20 };
+function paginationIndicator(panel: Locator, isMobile: boolean, page: number, total: number) {
+  return isMobile ? panel.getByText(`Page ${page} of ${total}`, { exact: true })
+    : panel.getByRole('button', { name: `Page ${page}`, exact: true }).and(panel.locator('[aria-current="page"]'));
+}
 
 const shopEarnings = { version: 'economic-v1', provenance: 'LIVE', currency: 'USD', minorExponent: 2,
   storeId: 'synthetic-store', storeOrderId: 'shop-order', orderId: 'original-order', captureId: 'original-capture',
@@ -154,7 +158,8 @@ test('external effects confirm once, recover unknown POD by lookup and never off
     { path: '/api/v1/admin/economic-finances/external-effects/pod-effect/execute-pod', body: { reference: 'original' } }]);
   await expect(panel.getByText('No verified SMTP acceptance.', { exact: false })).toBeVisible();
   await expect(panel.getByRole('button', { name: /resend/i })).toHaveCount(0);
-  await panel.getByLabel('External-effect environment').selectOption('TEST');
+  await panel.getByLabel('External-effect environment').click();
+  await page.getByRole('option', { name: 'Test / sandbox (no buyer or POD sends)', exact: true }).click();
   await expect(panel.getByText('No external effects in this environment.', { exact: true })).toBeVisible();
   await expect(panel.getByRole('button', { name: 'Prepare POD intent', exact: true })).toBeDisabled();
   await expect(panel.getByText('original-order', { exact: false })).toHaveCount(0);
@@ -237,7 +242,19 @@ test('verified money totals never merge modes or present unverified costs and qu
   const panel = page.getByRole('region', { name: 'Verified money totals', exact: true });
   await expect(panel.getByText('$90,071,992,547,409.93', { exact: true })).toBeVisible();
   await expect(panel.getByText('Unknown — no verified cost receipt', { exact: true })).toHaveCount(2);
-  await panel.getByRole('combobox', { name: 'Money environment' }).selectOption('TEST');
+  const environment = panel.getByRole('combobox', { name: 'Money environment' });
+  await environment.focus();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  const activeOption = page.getByRole('option', { name: 'Test / sandbox', exact: true });
+  await expect(environment).toHaveAttribute('aria-activedescendant', await activeOption.getAttribute('id') ?? 'missing-option-id');
+  await expect(environment).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(environment).toHaveAttribute('aria-expanded', 'false');
+  await expect(panel.getByText('$90,071,992,547,409.93', { exact: true })).toBeVisible();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
   await expect(panel.getByRole('alert')).toBeVisible();
   await expect(panel.getByText('$90,071,992,547,409.93', { exact: true })).toHaveCount(0);
   await expect(panel.getByText('$0.00', { exact: true })).toHaveCount(0);
@@ -248,7 +265,7 @@ test('verified money totals never merge modes or present unverified costs and qu
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test('platform reconciliation keeps unknown outcomes explicit, separates modes and paginates without writes', async ({ page }) => {
+test('platform reconciliation keeps unknown outcomes explicit, separates modes and paginates without writes', async ({ page, isMobile }) => {
   await session(page, 'SUPER_ADMIN');
   let failTest = true;
   const requests: URL[] = [];
@@ -273,7 +290,8 @@ test('platform reconciliation keeps unknown outcomes explicit, separates modes a
   await expect(panel.getByText('$90,071,992,547,409.93', { exact: true })).toBeVisible();
   await expect(panel.getByText('Not verified', { exact: true }).first()).toBeVisible();
   await expect(panel.getByText('Unknown', { exact: true })).toBeVisible();
-  await panel.getByRole('combobox', { name: 'Environment' }).selectOption('TEST');
+  await panel.getByRole('combobox', { name: 'Environment' }).click();
+  await page.getByRole('option', { name: 'Test / sandbox', exact: true }).click();
   await expect(panel.getByRole('alert')).toBeVisible();
   await expect(panel.getByText('$90,071,992,547,409.93', { exact: true })).toHaveCount(0);
   await expect(panel.getByText('EZH-LIVE', { exact: false })).toHaveCount(0);
@@ -286,11 +304,14 @@ test('platform reconciliation keeps unknown outcomes explicit, separates modes a
   await expect.poll(() => requests.at(-1)?.searchParams.get('storeId')).toBe('store-fixture');
   await expect(panel.getByRole('button', { name: 'Next operations' })).toBeEnabled();
   await panel.getByRole('button', { name: 'Next operations' }).click();
-  await expect(panel.getByText('Page 2 of 2')).toBeVisible();
+  await expect(paginationIndicator(panel, isMobile, 2, 2)).toBeVisible();
+  await expect.poll(() => requests.at(-1)?.searchParams.get('page')).toBe('2');
   expect(requests.at(-1)?.searchParams.get('reference')).toBe('EZH-TEST');
   expect(requests.at(-1)?.searchParams.get('provenance')).toBe('TEST');
-  await panel.getByRole('combobox', { name: 'Operation status' }).selectOption('SUCCEEDED');
-  await expect(panel.getByText('Page 1 of 2')).toBeVisible();
+  await panel.getByRole('combobox', { name: 'Operation status' }).click();
+  await page.getByRole('option', { name: 'SUCCEEDED', exact: true }).click();
+  await expect(paginationIndicator(panel, isMobile, 1, 2)).toBeVisible();
+  await expect.poll(() => requests.at(-1)?.searchParams.get('page')).toBe('1');
   await expect(panel.getByText('Unknown', { exact: true })).toBeVisible();
   expect(writes).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -386,6 +407,50 @@ test('seller retries the same payout key after error and reload, with exact mone
   await page.screenshot({ path: test.info().outputPath('payment-account.png'), fullPage: true });
 });
 
+test('shared payout modal preserves focus, responsive styling and pending dismissal guard', async ({ page, isMobile }) => {
+  await session(page);
+  let release = () => { /* installed by the deferred request below */ };
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  let writes = 0;
+  await page.route('**/api/v1/admin/finances/economic/**', async route => {
+    const url = new URL(route.request().url());
+    if (route.request().method() === 'POST') {
+      writes++;
+      await gate;
+      return route.fulfill({ status: 201, json: { success: true, data: { id: 'pending-ui-fixture', state: 'REQUESTED' }, meta: {} } });
+    }
+    return route.fulfill({ json: { success: true, data: url.pathname.endsWith('/overview') ? overview : history, meta: {} } });
+  });
+  await page.goto('/finances');
+  await page.getByLabel('Amount (USD)').fill('12.34');
+  const trigger = page.getByRole('button', { name: 'Review request', exact: true });
+  await expect(trigger).toHaveClass(/rounded-pill/);
+  await trigger.click();
+  const modal = page.getByRole('dialog', { name: 'Confirm payout request', exact: true });
+  await expect(modal).toBeVisible();
+  expect(await modal.evaluate(element => element.matches(':modal'))).toBe(true);
+  const panel = modal.locator('.shadow-modal');
+  expect(await panel.evaluate(element => getComputedStyle(element).borderTopLeftRadius)).toBe(isMobile ? '24px' : '16px');
+  await page.keyboard.press('Tab');
+  expect(await modal.evaluate(element => element.contains(document.activeElement))).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(trigger).toBeFocused();
+  await trigger.click();
+  try {
+    await modal.getByRole('button', { name: 'Confirm', exact: true }).click();
+    await expect.poll(() => writes).toBe(1);
+    await expect(modal.getByRole('button', { name: 'Cancel', exact: true })).toBeDisabled();
+    await page.keyboard.press('Escape');
+    await expect(modal).toBeVisible();
+    await page.screenshot({ path: test.info().outputPath('shared-payout-modal-pending.png') });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  } finally {
+    release();
+  }
+  await expect(modal).toHaveCount(0);
+  expect(writes).toBe(1);
+});
+
 test('mode switching does not retain live balances and loading errors are not fake zero funds', async ({ page }) => {
   await session(page);
   await page.route('**/api/v1/admin/finances/economic/**', async route => {
@@ -395,7 +460,8 @@ test('mode switching does not retain live balances and loading errors are not fa
   });
   await page.goto('/finances');
   await expect(page.getByText('$90,071,992,547,409.93', { exact: true })).toBeVisible();
-  await page.getByRole('combobox', { name: 'Environment', exact: true }).selectOption('TEST');
+  await page.getByRole('combobox', { name: 'Environment', exact: true }).click();
+  await page.getByRole('option', { name: 'Test / sandbox', exact: true }).click();
   await expect(page.getByText('TEST — sandbox funds only', { exact: false })).toBeVisible();
   await expect(page.getByRole('alert').first()).toBeVisible();
   await expect(page.getByText('$90,071,992,547,409.93', { exact: true })).toHaveCount(0);
@@ -577,10 +643,16 @@ test('shipping exceptions require separate capped approval, preserve audit on re
   await review(); let modal = page.getByRole('dialog');
   const approval = modal.getByRole('checkbox', { name: /I separately approve a shipping exception/ });
   await expect(approval).not.toBeChecked(); await approval.check();
-  await modal.getByLabel('Original shipping allocation').selectOption('shipping:original-shop');
+  await modal.getByLabel('Original shipping allocation').click();
+  await page.keyboard.press('Escape');
+  await expect(modal.getByLabel('Original shipping allocation')).toHaveAttribute('aria-expanded', 'false');
+  await expect(modal).toBeVisible();
+  await modal.getByLabel('Original shipping allocation').click();
+  await modal.getByRole('option', { name: /shipping:original-shop/ }).click();
   await modal.getByLabel('Approved shipping refund (USD)').fill('3.01');
   await modal.getByLabel('Audit evidence reference').fill('case-1');
   await modal.getByLabel('Audit reason', { exact: true }).fill('Approved after handoff');
+  await modal.screenshot({ path: test.info().outputPath('shipping-refund-review.png') });
   await modal.getByRole('button', { name: 'Prepare refund plan', exact: true }).click();
   await expect(modal.getByRole('alert')).toContainText('no greater than its remaining');
   await expect(modal.getByRole('alert')).toBeFocused(); expect(prepares).toHaveLength(0);
@@ -647,16 +719,30 @@ test('shipping refund requires every remaining shop item and never executes when
 test('platform debt recovery confirms the exact account and does not send an external transfer', async ({ page }) => {
   await session(page, 'SUPER_ADMIN');
   const writes: URL[] = [];
+  const reads: string[] = [];
+  let capturedMinor = '10000';
   await page.route('**/api/v1/admin/economic-finances/**', route => {
     const url = new URL(route.request().url());
     if (route.request().method() === 'POST') {
       writes.push(url);
       return route.fulfill({ json: { success: true, data: { recoveredMinor: '75' }, meta: {} } });
     }
+    reads.push(url.pathname);
+    if (url.pathname.endsWith('/summary')) return route.fulfill({ json: { success: true, data: {
+      version: 'economic-v1', provenance: 'LIVE', currency: 'USD', minorExponent: 2, readOnly: true,
+      basis: 'IMMUTABLE_VERIFIED_EVIDENCE', legacyIncluded: false,
+      capturedMinor, refundedMinor: '0', netCollectedMinor: capturedMinor, paidOutMinor: '0',
+      outstandingDebtMinor: writes.length ? '25' : '100', recoveredDebtMinor: writes.length ? '75' : '0',
+      bookedRefundRoundingMinor: '0', actualProviderFeeMinor: null, actualShippingCostMinor: null,
+    }, meta: {} } });
     return route.fulfill({ json: { success: true, data: url.pathname.endsWith('/overview')
-      ? { ...overview, debtMinor: writes.length ? '25' : '100', reversedMinor: '100', debtRecoveredMinor: writes.length ? '75' : '0', debtRecoveryEnabled: true } : history, meta: {} } });
+      ? { ...overview, capturedMinor, debtMinor: writes.length ? '25' : '100', reversedMinor: '100', debtRecoveredMinor: writes.length ? '75' : '0', debtRecoveryEnabled: true } : history, meta: {} } });
   });
   await page.goto('/payouts');
+  await page.getByRole('button', { name: 'Review verified money totals' }).click();
+  const summary = page.getByRole('region', { name: 'Verified money totals', exact: true });
+  const summaryDebt = summary.locator('dl > div').filter({ has: page.getByText('Outstanding refund debt', { exact: true }) });
+  await expect(summaryDebt).toContainText('$1.00');
   await page.getByLabel('Store ID', { exact: true }).fill('synthetic-store');
   await page.getByRole('button', { name: 'View verified account' }).click();
   await page.getByRole('button', { name: 'Review debt recovery' }).click();
@@ -667,8 +753,17 @@ test('platform debt recovery confirms the exact account and does not send an ext
   await page.getByRole('button', { name: 'Review debt recovery' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Confirm debt recovery' }).click();
   await expect(page.getByText('$0.75 retained against debt.', { exact: false })).toBeVisible();
+  await expect(summaryDebt).toContainText('$0.25');
   expect(writes).toHaveLength(1);
   expect(writes[0].pathname).toBe('/api/v1/admin/economic-finances/debt/recover');
   expect(writes[0].searchParams.get('beneficiaryId')).toBe('synthetic-store');
   expect(writes[0].searchParams.get('provenance')).toBe('LIVE');
+  const summaryReads = reads.filter(path => path.endsWith('/summary')).length;
+  const overviewReads = reads.filter(path => path.endsWith('/overview')).length;
+  capturedMinor = '12500';
+  await page.getByRole('button', { name: 'Reload data' }).click();
+  await expect.poll(() => reads.filter(path => path.endsWith('/summary')).length).toBeGreaterThan(summaryReads);
+  await expect.poll(() => reads.filter(path => path.endsWith('/overview')).length).toBeGreaterThan(overviewReads);
+  await expect(summary.getByText('$125.00', { exact: true }).first()).toBeVisible();
+  expect(writes).toHaveLength(1);
 });

@@ -22,7 +22,7 @@ async function fixture(page: Page) {
   });
 }
 
-test('affiliate uses API minimum, confirmation, exact cents and same request after timeout/reload', async ({ page }) => {
+test('affiliate uses API minimum, confirmation, exact cents and same request after timeout/reload', async ({ page, isMobile }) => {
   await fixture(page);
   const bodies: unknown[] = [];
   await page.route('**/api/v1/affiliates/me/economic/**', route => {
@@ -44,6 +44,9 @@ test('affiliate uses API minimum, confirmation, exact cents and same request aft
   const confirmation = page.getByRole('dialog', { name: 'Confirm payout request' });
   await trigger.click();
   await expect(confirmation).toBeVisible();
+  expect(await confirmation.evaluate(element => element.matches(':modal'))).toBe(true);
+  expect(await confirmation.locator('.shadow-modal').evaluate(element => getComputedStyle(element).borderTopLeftRadius)).toBe(isMobile ? '24px' : '16px');
+  await page.screenshot({ path: test.info().outputPath('shared-affiliate-payout-modal.png') });
   expect(bodies).toHaveLength(0);
   await page.keyboard.press('Escape');
   await expect(confirmation).toHaveCount(0);
@@ -73,7 +76,8 @@ test('Vietnamese mode switching isolates money and never shows a failed fetch as
   });
   await page.goto('/vi/affiliate/payouts');
   await expect(page.getByText('$90,071,992,547,409.93', { exact: true })).toBeVisible();
-  await page.getByRole('combobox', { name: 'Môi trường' }).selectOption('TEST');
+  await page.getByRole('combobox', { name: 'Môi trường' }).click();
+  await page.getByRole('option', { name: 'TEST / sandbox', exact: true }).click();
   await expect(page.getByText('Không tải được số dư.', { exact: false })).toBeVisible();
   await expect(page.getByText('$90,071,992,547,409.93', { exact: true })).toHaveCount(0);
   await expect(page.getByLabel('Số tiền (USD)', { exact: true })).toHaveCount(0);

@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { Select } from '@ezihubb/ui';
+import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { useAdminMode } from '../../../lib/store-context';
 import { MoneyMode } from '../../../lib/economic-finances';
 import { CapturedFinancePanel } from '../../../components/finances/CapturedFinancePanel';
@@ -15,15 +17,11 @@ export default function PaymentAccountPage() {
   if (!isReady) return <p role="status">Loading account…</p>;
   if (!actorId || !ownStoreId || isPlatformContext) return <p>Select your own store to view its payment account.</p>;
   return <div className="space-y-6">
-    <div className="flex flex-wrap items-center justify-between gap-4">
-      <div><h1 className="text-2xl font-semibold text-secondary">Payment account</h1>
-        <p className="mt-2 text-sm text-secondary">Verified money, exact allocations and payout history.</p></div>
-      <label className="flex items-center gap-3 text-secondary" htmlFor="finance-mode">Environment
-        <select id="finance-mode" className="min-h-11 rounded-button border border-border bg-surface px-3" value={mode} onChange={e => setMode(e.target.value as MoneyMode)}>
-          <option value="LIVE">Live</option><option value="TEST">Test / sandbox</option>
-        </select>
-      </label>
-    </div>
+    <AdminPageHeader title="Payment account" subtitle="Verified money, exact allocations and payout history."
+      queryKey={['captured-finances', actorId, ownStoreId, 'SELLER', ownStoreId, mode]}
+      actions={<label className="flex items-center gap-3 text-sm text-secondary" htmlFor="finance-mode">Environment
+        <Select id="finance-mode" value={mode} onChange={e => setMode(e.target.value as MoneyMode)} options={[{ value: 'LIVE', label: 'Live' }, { value: 'TEST', label: 'Test / sandbox' }]} />
+      </label>} />
     <CapturedFinancePanel key={`${actorId}:${ownStoreId}:${mode}`} actorId={actorId} storeId={ownStoreId} mode={mode} />
     <aside className="border border-border rounded-card p-5 text-secondary space-y-3">
       <h2 className="text-lg font-semibold">Legacy records & account settings</h2>

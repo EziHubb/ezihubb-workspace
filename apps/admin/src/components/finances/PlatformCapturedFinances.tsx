@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { Button, Input, Select } from '@ezihubb/ui';
 import { BeneficiaryKind, MoneyMode } from '../../lib/economic-finances';
 import { CapturedFinancePanel } from './CapturedFinancePanel';
 import { EconomicReconciliationPanel } from './EconomicReconciliationPanel';
@@ -19,43 +20,40 @@ export function PlatformCapturedFinances({ initialKind = 'SELLER' }: { initialKi
   const [showExternal, setShowExternal] = useState(false);
   const [selected, setSelected] = useState<{ kind: BeneficiaryKind; beneficiaryId: string; mode: MoneyMode } | null>(null);
   const actorId = (session?.user as { id?: string } | undefined)?.id;
-  const input = 'min-h-11 border border-border rounded-button bg-surface px-3 text-secondary';
   return <div className="space-y-6">
-    <button type="button" className={`${input} font-semibold`} aria-expanded={showExternal} aria-controls="platform-external-effects"
-      onClick={() => setShowExternal(value => !value)}>{showExternal ? 'Hide external-effect reconciliation' : 'Review POD and notifications'}</button>
+    <Button type="button" variant="secondary" className="h-auto min-h-11 whitespace-normal text-left" aria-expanded={showExternal} aria-controls="platform-external-effects"
+      onClick={() => setShowExternal(value => !value)}>{showExternal ? 'Hide external-effect reconciliation' : 'Review POD and notifications'}</Button>
     <div id="platform-external-effects">{showExternal && actorId && <EconomicExternalEffectsPanel key={actorId} actorId={actorId} />}</div>
-    <button type="button" className={`${input} font-semibold`} aria-expanded={showRecovery} aria-controls="platform-lifecycle-recovery"
+    <Button type="button" variant="secondary" className="h-auto min-h-11 whitespace-normal text-left" aria-expanded={showRecovery} aria-controls="platform-lifecycle-recovery"
       onClick={() => setShowRecovery(value => !value)}>
       {showRecovery ? 'Hide lifecycle recovery' : 'Review lifecycle recovery records'}
-    </button>
+    </Button>
     <div id="platform-lifecycle-recovery">
       {showRecovery && actorId && <EconomicRecoveryPanel key={actorId} actorId={actorId} />}
     </div>
-    <button type="button" className={`${input} font-semibold`} aria-expanded={showSummary} aria-controls="platform-verified-summary"
+    <Button type="button" variant="secondary" className="h-auto min-h-11 whitespace-normal text-left" aria-expanded={showSummary} aria-controls="platform-verified-summary"
       onClick={() => setShowSummary(value => !value)}>
       {showSummary ? 'Hide verified money totals' : 'Review verified money totals'}
-    </button>
+    </Button>
     <div id="platform-verified-summary">
       {showSummary && actorId && <EconomicSummaryPanel key={actorId} actorId={actorId} />}
     </div>
-    <button type="button" className={`${input} font-semibold`} aria-expanded={showReconciliation} aria-controls="platform-reconciliation"
+    <Button type="button" variant="secondary" className="h-auto min-h-11 whitespace-normal text-left" aria-expanded={showReconciliation} aria-controls="platform-reconciliation"
       onClick={() => setShowReconciliation(value => !value)}>
       {showReconciliation ? 'Hide payment reconciliation' : 'Review payment reconciliation'}
-    </button>
+    </Button>
     <div id="platform-reconciliation">
       {showReconciliation && actorId && <EconomicReconciliationPanel key={actorId} actorId={actorId} />}
     </div>
-    <form className="flex flex-col sm:flex-row sm:items-end flex-wrap gap-4" onSubmit={e => { e.preventDefault(); if (beneficiaryId.trim()) setSelected({ kind, beneficiaryId: beneficiaryId.trim(), mode }); }}>
-      <label className="flex flex-col gap-2" htmlFor="beneficiary-kind">Account type
-        <select id="beneficiary-kind" className={input} value={kind} onChange={e => setKind(e.target.value as BeneficiaryKind)}><option value="SELLER">Seller</option><option value="AFFILIATE">Affiliate</option></select>
+    <form className="flex flex-col sm:flex-row sm:items-start flex-wrap gap-4" onSubmit={e => { e.preventDefault(); if (beneficiaryId.trim()) setSelected({ kind, beneficiaryId: beneficiaryId.trim(), mode }); }}>
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-secondary" htmlFor="beneficiary-kind">Account type
+        <Select id="beneficiary-kind" value={kind} onChange={e => setKind(e.target.value as BeneficiaryKind)} options={[{ value: 'SELLER', label: 'Seller' }, { value: 'AFFILIATE', label: 'Affiliate' }]} />
       </label>
-      <label className="flex flex-col gap-2" htmlFor="beneficiary-id">{kind === 'SELLER' ? 'Store ID' : 'Affiliate account ID'}
-        <input id="beneficiary-id" className={input} value={beneficiaryId} onChange={e => setBeneficiaryId(e.target.value)} required maxLength={150} />
+      <Input label={kind === 'SELLER' ? 'Store ID' : 'Affiliate account ID'} id="beneficiary-id" className="min-h-11" value={beneficiaryId} onChange={e => setBeneficiaryId(e.target.value)} required maxLength={150} />
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-secondary" htmlFor="platform-finance-mode">Environment
+        <Select id="platform-finance-mode" value={mode} onChange={e => setMode(e.target.value as MoneyMode)} options={[{ value: 'LIVE', label: 'Live' }, { value: 'TEST', label: 'Test / sandbox' }]} />
       </label>
-      <label className="flex flex-col gap-2" htmlFor="platform-finance-mode">Environment
-        <select id="platform-finance-mode" className={input} value={mode} onChange={e => setMode(e.target.value as MoneyMode)}><option value="LIVE">Live</option><option value="TEST">Test / sandbox</option></select>
-      </label>
-      <button className={`${input} font-semibold`} disabled={!actorId || !beneficiaryId.trim()}>View verified account</button>
+      <Button type="submit" className="sm:mt-7" disabled={!actorId || !beneficiaryId.trim()}>View verified account</Button>
     </form>
     {selected && actorId ? <div className="space-y-4">
       <h2 className="font-semibold text-secondary break-words">{selected.kind} account: {selected.beneficiaryId}</h2>

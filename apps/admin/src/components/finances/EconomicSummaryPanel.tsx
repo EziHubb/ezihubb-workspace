@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api-client';
 import { formatCapturedUsd, MoneyMode } from '../../lib/economic-finances';
+import { Button, Select } from '@ezihubb/ui';
 
 interface VerifiedSummary {
   version: 'economic-v1'; provenance: MoneyMode; currency: 'USD'; minorExponent: 2;
@@ -15,7 +16,6 @@ interface VerifiedSummary {
   downstream?: { lifecycleAppliedCount: number; notificationProjectionCount: number; podVerifiedCount: number;
     externalUnknownCount: number; smtpAcceptedCount: number; smtpBasis: 'SMTP_ACCEPTANCE_NOT_INBOX_DELIVERY' };
 }
-const control = 'min-h-11 rounded-button border border-border bg-surface px-3 py-2 text-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50';
 
 export function EconomicSummaryPanel({ actorId }: { actorId: string }) {
   const [mode, setMode] = useState<MoneyMode>('LIVE');
@@ -32,18 +32,16 @@ export function EconomicSummaryPanel({ actorId }: { actorId: string }) {
     <h2 id="verified-summary-heading" className="text-xl font-semibold">Verified money totals</h2>
     <p>Only independently verified captures, completed refunds and payout settlements. Legacy records are excluded. Net collected is not profit or a bank balance.</p>
     <div className="flex flex-wrap items-end gap-3">
-      <label htmlFor="summary-mode" className="flex flex-col gap-2">Money environment
-        <select id="summary-mode" className={control} value={mode} onChange={event => setMode(event.target.value as MoneyMode)}>
-          <option value="LIVE">Live</option><option value="TEST">Test / sandbox</option>
-        </select>
+      <label htmlFor="summary-mode" className="flex flex-col gap-1.5 text-sm font-medium">Money environment
+        <Select id="summary-mode" value={mode} onChange={event => setMode(event.target.value as MoneyMode)} options={[{ value: 'LIVE', label: 'Live' }, { value: 'TEST', label: 'Test / sandbox' }]} />
       </label>
-      <button type="button" className={control} disabled={report.isFetching} onClick={() => void report.refetch()}>Refresh verified totals</button>
+      <Button type="button" variant="secondary" disabled={report.isFetching} onClick={() => void report.refetch()}>Refresh verified totals</Button>
     </div>
     <p className="font-semibold">{mode === 'LIVE' ? 'LIVE — production records only' : 'TEST — sandbox records only'}</p>
     <div role="status" aria-live="polite">{report.isFetching ? 'Loading verified totals…' : ''}</div>
     {(report.isError || (data && !valid)) && <div role="alert" className="rounded-card border border-error p-4 space-y-3">
       <p>Verified totals could not be loaded. No balances have been assumed.</p>
-      <button type="button" className={control} disabled={report.isFetching} onClick={() => void report.refetch()}>Retry verified totals</button>
+      <Button type="button" variant="secondary" disabled={report.isFetching} onClick={() => void report.refetch()}>Retry verified totals</Button>
     </div>}
     {valid && !report.isError && !report.isFetching && <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {[
@@ -51,7 +49,7 @@ export function EconomicSummaryPanel({ actorId }: { actorId: string }) {
         ['Settled payouts', data.paidOutMinor], ['Outstanding refund debt', data.outstandingDebtMinor], ['Debt retained / recovered', data.recoveredDebtMinor],
         ['Booked refund rounding (signed)', data.bookedRefundRoundingMinor],
       ].map(([label, value]) => <div key={label} className="min-w-0 rounded-card border border-border bg-surface p-4">
-        <dt>{label}</dt><dd className="mt-2 font-semibold tabular-nums [overflow-wrap:anywhere]">{formatCapturedUsd(value)}</dd>
+        <dt className="text-sm text-muted">{label}</dt><dd className="mt-2 font-display text-2xl font-bold tabular-nums [overflow-wrap:anywhere]">{formatCapturedUsd(value)}</dd>
       </div>)}
       {['Actual provider fees', 'Actual shipping spend'].map(label => <div key={label} className="rounded-card border border-border p-4">
         <dt>{label}</dt><dd className="mt-2">Unknown — no verified cost receipt</dd>

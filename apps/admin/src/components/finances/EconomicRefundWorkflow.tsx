@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api-client';
 import { formatCapturedUsd, MoneyMode, usdInputToMinor } from '../../lib/economic-finances';
+import { Button, Input, Modal, ModalBody, ModalFooter, ModalHeader, Select, Textarea } from '@ezihubb/ui';
 
 type Request = { id: string; state: string; amountMinor: string; reason: string; requestedBy?: string; providerReference: string | null;
   giftWrapApproval?: { approvedBy: string; reason: string } | null;
@@ -12,12 +13,11 @@ type Request = { id: string; state: string; amountMinor: string; reason: string;
 type Options = { version: 'economic-v1'; captureId: string; provenance: MoneyMode; currency: string; writesEnabled: boolean;
   lines: { partKey: string; kind?: 'ITEM' | 'GIFT_WRAP' | 'SHIPPING'; storeId: string; originalQuantity: number; remainingQuantity: number; customerMinor: string; remainingCustomerMinor?: string; shippingEligible?: boolean }[];
   unresolvedRequest: Request | null };
-const control = 'min-h-11 rounded-button border border-border px-3 py-2 bg-surface text-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50';
 
 /** Separate audited workflow. Preparing does not refund; the second explicit
  * confirmation dispatches at most once. Ambiguous requests retain identity. */
 export function EconomicRefundWorkflow({ captureId, mode, actorId }: { captureId: string; mode: MoneyMode; actorId: string }) {
-  const qc = useQueryClient(), dialog = useRef<HTMLDialogElement>(null), submitting = useRef(false);
+  const qc = useQueryClient(), submitting = useRef(false);
   const [open, setOpen] = useState(false), [reason, setReason] = useState(''), [reference, setReference] = useState('');
   const [selection, setSelection] = useState<Record<string, number>>({}), [request, setRequest] = useState<Request | null>(null);
   const [locked, setLocked] = useState(false), [error, setError] = useState(''), [message, setMessage] = useState('');
@@ -50,13 +50,6 @@ export function EconomicRefundWorkflow({ captureId, mode, actorId }: { captureId
     && typeof line.remainingCustomerMinor === 'string' && /^[1-9]\d*$/.test(line.remainingCustomerMinor)
     && BigInt(line.remainingCustomerMinor) <= BigInt(line.customerMinor) ? [{ ...line, remainingCustomerMinor: line.remainingCustomerMinor }] : []) : [];
   useEffect(() => { if (error) errorSummary.current?.focus(); }, [error]);
-  useEffect(() => {
-    if (!open) return;
-    const trigger = document.activeElement as HTMLElement | null;
-    const currentDialog = dialog.current;
-    currentDialog?.showModal();
-    return () => { currentDialog?.close(); if (trigger?.isConnected) trigger.focus(); };
-  }, [open]);
   const mutation = useMutation({ mutationFn: async () => {
     if (!canWrite) throw new Error('Refund writing is unavailable for this scope');
     if (pending) {
@@ -104,17 +97,16 @@ export function EconomicRefundWorkflow({ captureId, mode, actorId }: { captureId
     } });
   function close() { if (!mutation.isPending) setOpen(false); }
   return <div>
-    <button type="button" className={control} onClick={() => setOpen(true)}>Review original refund</button>
-    {open && <dialog ref={dialog} aria-labelledby={`refund-title-${captureId}`} onCancel={event => { if (mutation.isPending) event.preventDefault(); else close(); }} onClose={close}
-      style={{ margin: 'auto', width: 'calc(100% - 2rem)', maxHeight: 'calc(100dvh - 2rem)' }}
-      className="max-w-xl overflow-y-auto rounded-card border border-border bg-surface p-5 text-secondary backdrop:bg-black/50">
-      <form className="space-y-4" onSubmit={event => { event.preventDefault(); if (!submitting.current && canWrite) { submitting.current = true; mutation.mutate(); } }}>
-        <h2 id={`refund-title-${captureId}`} className="text-xl font-semibold">{pending ? 'Confirm original refund execution' : 'Prepare original-allocation refund'}</h2>
+    <Button type="button" variant="secondary" onClick={() => setOpen(true)}>Review original refund</Button>
+    {open && <Modal isOpen native size="lg" dismissible={!mutation.isPending} closeOnOverlayClick={false} aria-labelledby={`refund-title-${captureId}`} onClose={close}>
+      <form className="flex min-h-0 flex-col" onSubmit={event => { event.preventDefault(); if (!submitting.current && canWrite) { submitting.current = true; mutation.mutate(); } }}>
+        <ModalHeader><h2 id={`refund-title-${captureId}`}>{pending ? 'Confirm original refund execution' : 'Prepare original-allocation refund'}</h2></ModalHeader>
+        <ModalBody className="space-y-4 text-sm text-secondary">
         <p className="break-all text-sm">{mode} · USD · Capture {captureId}</p>
         <p className="text-sm">Refund is not returned-stock evidence. No automatic restock or deletion of a paid payout occurs.</p>
         {options.isFetching && <p role="status">Loading original allocations…</p>}
         {(options.isError || (data && (!valid || !pendingValid))) && <div role="alert"><p>Original allocations could not be verified. Actions are blocked.</p>
-          <button type="button" className={control} onClick={() => void options.refetch()}>Retry original allocations</button></div>}
+          <Button type="button" variant="secondary" onClick={() => void options.refetch()}>Retry original allocations</Button></div>}
         {valid && !data.writesEnabled && <p role="status">Refund writes are disabled for this environment. Viewing does not dispatch a refund.</p>}
         {canWrite && pending ? <div className="space-y-3">
           <p className="text-lg font-semibold">{formatCapturedUsd(pending.amountMinor)} · {pending.state}</p>
@@ -129,9 +121,8 @@ export function EconomicRefundWorkflow({ captureId, mode, actorId }: { captureId
           </div>}
           <p>{pending.state === 'PREPARED' ? 'Confirming now sends one refund to the original payment provider. This cannot be undone.'
             : 'This request was already dispatched. Confirmation only retrieves its existing provider evidence; it never sends another refund.'}</p>
-          {pending.state !== 'PREPARED' && <label htmlFor={`refund-reference-${captureId}`} className="block space-y-2">Original provider refund reference
-            <input id={`refund-reference-${captureId}`} className={`${control} w-full`} value={pending.providerReference ?? reference} onChange={event => setReference(event.target.value)}
-              readOnly={!!pending.providerReference} required pattern="[A-Za-z0-9_]{1,150}" maxLength={150} /></label>}
+          {pending.state !== 'PREPARED' && <Input label="Original provider refund reference" id={`refund-reference-${captureId}`} fullWidth className="min-h-11" value={pending.providerReference ?? reference} onChange={event => setReference(event.target.value)}
+              readOnly={!!pending.providerReference} required pattern="[A-Za-z0-9_]{1,150}" maxLength={150} />}
         </div> : canWrite && <div className="space-y-3">
           <p className="text-sm">Original allocations only. Automatic shipping eligibility requires full shop cancellation before handoff. Gift wrap and shipping exceptions need separate super admin approval. Tax-bearing refunds and goodwill remain blocked.</p>
           {!!overrideLines.length && <label className="flex min-h-11 items-start gap-3 rounded-card border border-border p-3" htmlFor={`shipping-exception-${captureId}`}>
@@ -142,44 +133,39 @@ export function EconomicRefundWorkflow({ captureId, mode, actorId }: { captureId
           {shippingException ? <fieldset className="space-y-3">
             <legend className="font-semibold">Separately approved customer-paid shipping</legend>
             <p className="text-sm">Only the original remaining shipping charge may be refunded. Platform support is not a seller credit. This request cannot include merchandise or gift wrap.</p>
-            <label className="block space-y-2" htmlFor={`shipping-part-${captureId}`}>Original shipping allocation
-              <select id={`shipping-part-${captureId}`} className={`${control} w-full`} value={shippingPart} disabled={locked} required onChange={event => setShippingPart(event.target.value)}>
-                <option value="">Choose original shipping</option>
-                {overrideLines.map(line => <option key={line.partKey} value={line.partKey}>{line.partKey} · Remaining {formatCapturedUsd(line.remainingCustomerMinor)}</option>)}
-              </select>
+            <label className="block space-y-1.5 font-medium" htmlFor={`shipping-part-${captureId}`}>Original shipping allocation
+              <Select id={`shipping-part-${captureId}`} value={shippingPart} disabled={locked} required onChange={event => setShippingPart(event.target.value)} options={[{ value: '', label: 'Choose original shipping' }, ...overrideLines.map(line => ({ value: line.partKey, label: `${line.partKey} · Remaining ${formatCapturedUsd(line.remainingCustomerMinor)}` }))]} />
             </label>
-            <label className="block space-y-2" htmlFor={`shipping-amount-${captureId}`}>Approved shipping refund (USD)
-              <input id={`shipping-amount-${captureId}`} className={`${control} w-full`} inputMode="decimal" value={shippingAmount}
+            <Input label="Approved shipping refund (USD)" id={`shipping-amount-${captureId}`} fullWidth className="min-h-11" inputMode="decimal" value={shippingAmount}
                 readOnly={locked} required maxLength={20} onChange={event => setShippingAmount(event.target.value)} aria-describedby={`shipping-limit-${captureId}`} />
-            </label>
             <p id={`shipping-limit-${captureId}`} className="text-sm">Use up to two decimal places. Server verification rechecks the remaining original charge before recording this plan.</p>
-            <label className="block space-y-2" htmlFor={`shipping-evidence-${captureId}`}>Audit evidence reference
-              <input id={`shipping-evidence-${captureId}`} className={`${control} w-full`} value={shippingEvidence} required maxLength={150}
+            <Input label="Audit evidence reference" id={`shipping-evidence-${captureId}`} fullWidth className="min-h-11" value={shippingEvidence} required maxLength={150}
                 readOnly={locked} onChange={event => setShippingEvidence(event.target.value)} />
-            </label>
-          </fieldset> : data.lines.map(line => <label key={line.partKey} htmlFor={`refund-line-${captureId}-${line.partKey}`} className="block space-y-2 border-b border-border pb-3">
+          </fieldset> : data.lines.map(line => <div key={line.partKey} className="space-y-2 border-b border-border pb-3">
+            <label htmlFor={`refund-line-${captureId}-${line.partKey}`}>
             <span className="block break-all text-sm">{line.kind === 'GIFT_WRAP' ? 'Gift wrap · ' : line.kind === 'SHIPPING' ? 'Customer-paid shipping · ' : ''}{line.partKey} · Store {line.storeId} · {line.remainingQuantity} units remaining</span>
             {line.kind === 'SHIPPING' && <span className="block text-sm">{line.shippingEligible ? 'Eligible before handoff; select all remaining shop items too.' : 'Unavailable: cancellation before handoff cannot be verified.'}</span>}
-            <input id={`refund-line-${captureId}-${line.partKey}`} type="number" className={`${control} w-28`} min={0} max={line.remainingQuantity} step={1} disabled={locked || !line.remainingQuantity || (line.kind === 'SHIPPING' && !line.shippingEligible)}
+            </label>
+            <Input id={`refund-line-${captureId}-${line.partKey}`} type="number" className="min-h-11 w-28" min={0} max={line.remainingQuantity} step={1} disabled={locked || !line.remainingQuantity || (line.kind === 'SHIPPING' && !line.shippingEligible)}
               value={selection[line.partKey] ?? 0} onChange={event => setSelection(previous => ({ ...previous, [line.partKey]: Number(event.target.value) }))} />
-          </label>)}
+          </div>)}
           {!shippingException && selectsGiftWrap && <label htmlFor={`gift-wrap-approval-${captureId}`} className="flex items-start gap-3 rounded-card border border-border p-3">
             <input id={`gift-wrap-approval-${captureId}`} type="checkbox" className="mt-1" checked={approveGiftWrap} disabled={locked}
               onChange={event => setApproveGiftWrap(event.target.checked)} />
             <span>I separately approve refunding the selected original gift wrap fee as super admin. My identity and audit reason will be recorded.</span>
           </label>}
-          <label htmlFor={`refund-reason-${captureId}`} className="block space-y-2">Audit reason
-            <textarea id={`refund-reason-${captureId}`} className={`${control} w-full`} value={reason} onChange={event => setReason(event.target.value)} maxLength={500} required readOnly={locked} /></label>
+          <Textarea label="Audit reason" id={`refund-reason-${captureId}`} fullWidth value={reason} onChange={event => setReason(event.target.value)} maxLength={500} required readOnly={locked} />
         </div>}
         {error && <p ref={errorSummary} tabIndex={-1} role="alert" className="break-words text-error">{error}</p>}
         {message && <p role="status">{message}</p>}
-        <div className="flex flex-wrap justify-end gap-3">
-          <button type="button" className={control} disabled={mutation.isPending} onClick={close}>Close refund review</button>
-          <button type="submit" className={`${control} font-semibold`} disabled={mutation.isPending || !canWrite || (!pending && !shippingException && selectsGiftWrap && !approveGiftWrap)}>
+        </ModalBody>
+        <ModalFooter className="flex-wrap">
+          <Button type="button" variant="secondary" disabled={mutation.isPending} onClick={close}>Close refund review</Button>
+          <Button type="submit" loading={mutation.isPending} disabled={mutation.isPending || !canWrite || (!pending && !shippingException && selectsGiftWrap && !approveGiftWrap)}>
             {mutation.isPending ? 'Verifying request…' : pending ? pending.state === 'PREPARED' ? 'Confirm refund execution' : 'Verify existing refund' : locked ? 'Retry same refund plan' : 'Prepare refund plan'}
-          </button>
-        </div>
+          </Button>
+        </ModalFooter>
       </form>
-    </dialog>}
+    </Modal>}
   </div>;
 }

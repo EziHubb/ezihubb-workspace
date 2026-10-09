@@ -5,11 +5,26 @@ import { createPortal } from 'react-dom';
 
 export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'fullscreen';
 
+const modalStack: HTMLElement[] = [];
+let scrollLocks = 0;
+let unlockedOverflow = '';
+const focusableSelector = 'button, a[href], input, select, textarea, [tabindex]';
+function focusableElements(root: HTMLElement) {
+  return Array.from(root.querySelectorAll<HTMLElement>(focusableSelector)).filter(element =>
+    element.tabIndex >= 0 && !element.matches(':disabled') && !element.closest('[inert]') && element.getClientRects().length > 0);
+}
+
 export interface ModalProps {
   isOpen:               boolean;
   onClose:              () => void;
   size?:                ModalSize;
   closeOnOverlayClick?: boolean;
+  /** Keep native focus containment/inert background for financial confirmations. */
+  native?:              boolean;
+  /** Prevent dismissal while an irreversible action is awaiting a response. */
+  dismissible?:         boolean;
+  'aria-labelledby'?:   string;
+  'aria-describedby'?:  string;
   className?:           string;
   children:             React.ReactNode;
 }
@@ -123,21 +138,65 @@ export const Modal: React.FC<ModalProps> = ({
   onClose,
   size = 'md',
   closeOnOverlayClick = true,
+  native = false,
+  dismissible = true,
+  'aria-labelledby': labelledBy,
+  'aria-describedby': describedBy,
   className = '',
   children,
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const closeRef = useRef(onClose);
+  const dismissibleRef = useRef(dismissible);
+  closeRef.current = onClose;
+  dismissibleRef.current = dismissible;
 
   useEffect(() => {
     if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
+    const trigger = document.activeElement as HTMLElement | null;
+    const dialog = dialogRef.current;
+    const root = native ? dialog : overlayRef.current;
+    if (!root) return;
+    modalStack.push(root);
+    if (scrollLocks++ === 0) unlockedOverflow = document.body.style.overflow;
+    if (native && dialog && !dialog.open) dialog.showModal();
+    const focusInside = () => (focusableElements(root)[0] ?? panelRef.current)?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (modalStack.at(-1) !== root || e.defaultPrevented) return;
+      if (e.key === 'Escape' && dismissibleRef.current) {
+        e.preventDefault(); closeRef.current();
+      }
+      if (e.key === 'Tab') {
+        const elements = focusableElements(root);
+        const first = elements[0], last = elements.at(-1);
+        if (!first || !root.contains(document.activeElement) || (e.shiftKey ? document.activeElement === first : document.activeElement === last)) {
+          e.preventDefault();
+          (e.shiftKey ? last : first)?.focus();
+          if (!first) panelRef.current?.focus();
+        }
+      }
+    };
+    const onFocus = (event: FocusEvent) => {
+      if (modalStack.at(-1) === root && event.target instanceof Node && !root.contains(event.target)) focusInside();
+    };
+    if (!native) {
+      document.addEventListener('keydown', onKey);
+      document.addEventListener('focusin', onFocus);
+      if (!root.contains(document.activeElement)) focusInside();
+    }
     document.body.style.overflow = 'hidden';
     return () => {
       document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
+      document.removeEventListener('focusin', onFocus);
+      const wasTop = modalStack.at(-1) === root;
+      modalStack.splice(modalStack.indexOf(root), 1);
+      if (native) dialog?.close();
+      if (--scrollLocks === 0) document.body.style.overflow = unlockedOverflow;
+      if (wasTop && trigger?.isConnected) trigger.focus();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, native]);
 
   if (!isOpen || typeof document === 'undefined') return null;
 
@@ -146,16 +205,14 @@ export const Modal: React.FC<ModalProps> = ({
       ? 'md:w-screen md:h-screen md:max-h-screen md:rounded-none'
       : panelSizeClasses[size];
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 bg-[#2A2118]/45 flex items-end md:items-center md:justify-center md:p-4"
-      onClick={closeOnOverlayClick ? onClose : undefined}
-      aria-hidden={!isOpen}
-    >
+  const panel = (
       <div
         ref={panelRef}
-        role="dialog"
-        aria-modal="true"
+        tabIndex={-1}
+        role={native ? undefined : 'dialog'}
+        aria-modal={native ? undefined : true}
+        aria-labelledby={native ? undefined : labelledBy}
+        aria-describedby={native ? undefined : describedBy}
         onClick={(e) => e.stopPropagation()}
         className={[
           'flex flex-col bg-surface shadow-modal overflow-hidden w-full',
@@ -171,7 +228,36 @@ export const Modal: React.FC<ModalProps> = ({
       >
         {children}
       </div>
-    </div>,
+  );
+  const closeFromOverlay = closeOnOverlayClick && dismissible ? onClose : undefined;
+  return createPortal(
+    native ? (
+      <dialog
+        ref={dialogRef}
+        data-ui-modal-portal=""
+        aria-labelledby={labelledBy}
+        aria-describedby={describedBy}
+        className="fixed inset-0 m-0 h-[100dvh] max-h-none w-screen max-w-none border-0 bg-transparent p-0 text-secondary backdrop:bg-[#2A2118]/45"
+        onCancel={(event) => {
+          event.preventDefault();
+          if (dismissible) onClose();
+        }}
+      >
+        <div className="flex h-full items-end md:items-center md:justify-center md:p-4" onClick={closeFromOverlay}>
+          {panel}
+        </div>
+      </dialog>
+    ) : (
+      <div
+        ref={overlayRef}
+        data-ui-modal-portal=""
+        className="fixed inset-0 z-50 bg-[#2A2118]/45 flex items-end md:items-center md:justify-center md:p-4"
+        onClick={closeFromOverlay}
+        aria-hidden={!isOpen}
+      >
+        {panel}
+      </div>
+    ),
     document.body,
   );
 };

@@ -6,6 +6,7 @@ import { useLocale } from 'next-intl';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { Button, Input } from '@ezihubb/ui';
 import type { ConversationDto } from '@ezihubb/types';
 import { GuestMessageVerification } from '../../../../../components/messages/GuestMessageVerification';
 import { MessageThread } from '../../../../../components/messages/MessageThread';
@@ -32,10 +33,7 @@ export default function GuestMessagesPage() {
       : session.isPending ? <p role="status">{vi ? 'Đang kiểm tra phiên…' : 'Checking your session…'}</p>
         : !verifiedEmail ? <section className="max-w-xl space-y-4">
           <p className="text-sm text-muted">{vi ? 'Xác minh email đã dùng để nhắn tin cho shop. Hội thoại đã liên kết với tài khoản cần đăng nhập để xem.' : 'Verify the email you used to contact the shop. Conversations linked to an account require account sign-in.'}</p>
-          <label htmlFor="guest-inbox-email" className="block space-y-2 text-sm font-medium"><span>Email</span>
-          <input id="guest-inbox-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)}
-            className="min-h-11 w-full rounded-lg border border-border px-3 py-2 focus-visible:ring-2 focus-visible:ring-primary" />
-          </label>
+          <Input label="Email" id="guest-inbox-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} fullWidth className="min-h-11" />
           <GuestMessageVerification email={email} onVerified={(value) => {
             setActiveId(null);
             queryClient.removeQueries({ queryKey: ['conversation'] });
@@ -44,7 +42,7 @@ export default function GuestMessagesPage() {
         </section> : <>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="break-all text-sm">{verifiedEmail}</p>
-            <button type="button" disabled={ending} className="min-h-11 rounded-button border border-border px-4 py-2 text-sm disabled:opacity-50" onClick={async () => {
+            <Button type="button" variant="secondary" loading={ending} onClick={async () => {
               setEnding(true); setEndError(false);
               try {
                 await apiClient.delete(API_ROUTES.MESSAGES.GUEST_ACCESS);
@@ -53,13 +51,13 @@ export default function GuestMessagesPage() {
                 queryClient.removeQueries({ queryKey: ['guest-conversations'] });
                 queryClient.setQueryData(['guest-message-access'], { email: null });
               } catch { setEndError(true); } finally { setEnding(false); }
-            }}>{vi ? 'Kết thúc phiên khách' : 'End guest session'}</button>
+            }}>{vi ? 'Kết thúc phiên khách' : 'End guest session'}</Button>
           </div>
           {endError && <p role="alert" className="text-error">{vi ? 'Chưa thể kết thúc phiên. Hãy thử lại.' : 'Unable to end this session. Please try again.'}</p>}
           {activeId ? <section className="space-y-3">
-            <button type="button" onClick={() => setActiveId(null)} className="min-h-11 rounded-button border border-border px-4 py-2 text-sm focus-visible:ring-2 focus-visible:ring-primary">
+            <Button type="button" variant="secondary" onClick={() => setActiveId(null)}>
               {vi ? 'Quay lại hộp thư' : 'Back to inbox'}
-            </button>
+            </Button>
             <div className="flex h-[65vh] min-h-96 flex-col overflow-hidden rounded-card border border-border"><MessageThread conversationId={activeId} onBack={() => setActiveId(null)} /></div>
           </section>
             : conversations.isPending ? <p role="status">{vi ? 'Đang tải…' : 'Loading messages…'}</p>

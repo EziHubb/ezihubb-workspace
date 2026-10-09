@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
+import { Button } from '@ezihubb/ui';
 import type { UserDto } from '@ezihubb/types';
 import { GOOGLE_OAUTH_MESSAGE_TYPE, postGoogleOAuthResultToOpener } from '../../../../../../lib/auth/google-oauth-popup';
 import { TotpChallengeForm, type CompletedSignIn } from '../../../../../../components/auth/TotpChallengeForm';
@@ -85,7 +86,7 @@ function GoogleCallbackContent() {
     onCancel={() => router.replace('/login')} onComplete={completeSignIn} />;
   if (failed) return <div role="alert" className="space-y-4 text-secondary">
     <p>Unable to finish signing in. Please start again.</p>
-    <button type="button" className="min-h-11 rounded-button bg-primary px-4 py-2 text-white" onClick={() => router.replace('/login')}>Back to sign-in</button>
+    <Button type="button" onClick={() => router.replace('/login')}>Back to sign-in</Button>
   </div>;
 
   return (

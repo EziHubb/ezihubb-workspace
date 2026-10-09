@@ -15,7 +15,7 @@ import type {
 
 export function ProductReadOnlyNotice() {
   return (
-    <div className="mb-5 flex gap-3 rounded-xl border border-border bg-surface p-4 text-sm text-secondary">
+    <div className="mb-5 flex gap-3 rounded-card border border-border bg-surface p-4 text-sm text-secondary">
       <Eye aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
       <div>
         <p className="font-semibold">Platform mode · View only</p>
@@ -89,7 +89,7 @@ export function ProductReadOnlyView({
             href={image.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="relative aspect-square overflow-hidden rounded-xl border border-border"
+            className="relative aspect-square overflow-hidden rounded-card border border-border"
           >
             <Image
               src={image.url}
@@ -116,7 +116,7 @@ export function ProductReadOnlyView({
           ))}
         </section>
       )}
-      <dl className="grid gap-5 rounded-xl border border-border bg-surface p-5 sm:grid-cols-2 lg:grid-cols-4">
+      <dl className="grid gap-5 rounded-card border border-border bg-surface p-5 sm:grid-cols-2 lg:grid-cols-4">
         {fields.map(([label, value]) => (
           <div key={label}>
             <dt className="text-sm text-muted">{label}</dt>
@@ -126,13 +126,13 @@ export function ProductReadOnlyView({
           </div>
         ))}
       </dl>
-      <section className="rounded-xl border border-border bg-surface p-5">
+      <section className="rounded-card border border-border bg-surface p-5">
         <h2 className="mb-3 font-semibold">Description</h2>
         <p className="whitespace-pre-wrap break-words text-sm text-secondary">
           {product.description || 'No description'}
         </p>
       </section>
-      <section className="rounded-xl border border-border bg-surface p-5">
+      <section className="rounded-card border border-border bg-surface p-5">
         <h2 className="mb-3 font-semibold">Variations</h2>
         {variants.isPending ? (
           <p role="status">Loading variations…</p>
@@ -183,7 +183,7 @@ export function ProductReadOnlyView({
           </div>
         )}
       </section>
-      <section className="rounded-xl border border-border bg-surface p-5">
+      <section className="rounded-card border border-border bg-surface p-5">
         <h2 className="mb-3 font-semibold">Custom options</h2>
         {(detail?.customOptions ?? product.customOptions ?? []).map(
           (option) => (
@@ -206,7 +206,7 @@ export function ProductReadOnlyView({
         {(detail?.customOptions ?? product.customOptions ?? []).length ===
           0 && <p className="text-sm text-muted">No custom options</p>}
       </section>
-      <section className="rounded-xl border border-border bg-surface p-5">
+      <section className="rounded-card border border-border bg-surface p-5">
         <h2 className="mb-3 font-semibold">SEO</h2>
         <dl className="space-y-3 text-sm">
           <div>

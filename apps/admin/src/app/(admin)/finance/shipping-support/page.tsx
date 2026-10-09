@@ -451,7 +451,9 @@ export default function ShippingSupportPage() {
                     <td className="px-4 py-3.5 text-right font-bold tabular-nums text-primary">{fmtAmount(row.platformSubsidy)}</td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-flex items-center rounded-pill px-2.5 py-1 text-xs font-semibold ${
-                        row.fundingStatus === 'REALIZED'
+                        row.fundingStatus === 'CANCELLED'
+                          ? 'bg-status-cancelled/10 text-status-cancelled'
+                          : row.fundingStatus === 'REALIZED'
                           ? 'bg-green-50 text-green-700'
                           : 'bg-amber-50 text-amber-700'
                       }`}>

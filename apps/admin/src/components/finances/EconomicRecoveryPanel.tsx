@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api-client';
 import { MoneyMode } from '../../lib/economic-finances';
+import { Button, Modal, ModalBody, ModalFooter, ModalHeader, Pagination, Select, Textarea } from '@ezihubb/ui';
 
 interface RecoveryRow {
   id: string; orderId: string; orderNumber: string; eventType: string; state: 'DEAD'; attempts: number;
@@ -13,12 +14,11 @@ interface RecoveryHistory {
   version: 'economic-v1'; provenance: MoneyMode; currency: 'USD'; recoveryEnabled: boolean;
   page: number; limit: number; total: number; data: RecoveryRow[];
 }
-const control = 'min-h-11 rounded-button border border-border bg-surface px-3 py-2 text-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50';
 
 export function EconomicRecoveryPanel({ actorId }: { actorId: string }) {
   const [mode, setMode] = useState<MoneyMode>('LIVE'), [page, setPage] = useState(1);
   const [selected, setSelected] = useState<RecoveryRow | null>(null), [reason, setReason] = useState(''), [done, setDone] = useState(false);
-  const dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLButtonElement | null>(null);
+  const trigger = useRef<HTMLButtonElement | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const cache = useQueryClient();
   const report = useQuery({ queryKey: ['economic-recovery', actorId, 'platform', mode, page], retry: false,
@@ -42,59 +42,50 @@ export function EconomicRecoveryPanel({ actorId }: { actorId: string }) {
     await cache.invalidateQueries({ queryKey: ['economic-summary', actorId] });
   } });
   useEffect(() => {
-    if (selected && !dialog.current?.open) dialog.current?.showModal();
+    if (!selected && trigger.current && !trigger.current.isConnected) heading.current?.focus();
   }, [selected]);
-  const close = () => { if (!mutation.isPending) dialog.current?.close(); };
+  const close = () => { if (!mutation.isPending) setSelected(null); };
   const rows = valid && !report.isFetching && !report.isError ? data.data : [];
   return <section aria-labelledby="lifecycle-recovery-heading" className="space-y-4 text-secondary">
     <h2 ref={heading} tabIndex={-1} id="lifecycle-recovery-heading" className="text-xl font-semibold">Lifecycle recovery</h2>
     <p>Terminal failed events only. Recovery rechecks original proof and inventory, applies missing database effects once, and records your reason. It does not retry a payment, refund, email or POD order.</p>
     <div className="flex flex-wrap items-end gap-3">
-      <label htmlFor="recovery-mode" className="flex flex-col gap-2">Recovery environment
-        <select id="recovery-mode" className={control} value={mode} disabled={!!selected} onChange={event => { setMode(event.target.value as MoneyMode); setPage(1); }}>
-          <option value="LIVE">Live</option><option value="TEST">Test / sandbox</option>
-        </select>
+      <label htmlFor="recovery-mode" className="flex flex-col gap-1.5 text-sm font-medium">Recovery environment
+        <Select id="recovery-mode" value={mode} disabled={!!selected} onChange={event => { setMode(event.target.value as MoneyMode); setPage(1); }} options={[{ value: 'LIVE', label: 'Live' }, { value: 'TEST', label: 'Test / sandbox' }]} />
       </label>
-      <button type="button" className={control} disabled={report.isFetching || !!selected} onClick={() => void report.refetch()}>Refresh recovery records</button>
+      <Button type="button" variant="secondary" disabled={report.isFetching || !!selected} onClick={() => void report.refetch()}>Refresh recovery records</Button>
     </div>
     <p className="font-semibold">{mode === 'LIVE' ? 'LIVE — production records only' : 'TEST — sandbox records only'}</p>
     <div role="status" aria-live="polite">{report.isFetching ? 'Loading recovery records…' : valid && !report.isError ? `${data.total} terminal events` : ''}</div>
     {(report.isError || (data && !valid)) && <div role="alert" className="rounded-card border border-error p-4">
       <p>Recovery records could not be verified. No action is available.</p>
-      <button type="button" className={control} disabled={report.isFetching || !!selected} onClick={() => void report.refetch()}>Retry recovery records</button>
+      <Button type="button" variant="secondary" disabled={report.isFetching || !!selected} onClick={() => void report.refetch()}>Retry recovery records</Button>
     </div>}
     {valid && !report.isFetching && !report.isError && !rows.length && <p>No terminal events in this environment.</p>}
     {rows.map(row => <article key={row.id} className="rounded-card border border-border p-4 space-y-3 [overflow-wrap:anywhere]">
       <h3 className="font-semibold">{row.orderNumber} · {row.eventType}</h3>
       <p>Event {row.id} · DEAD · {row.attempts} original attempts</p>
       {row.recovery ? <p>Database recovery recorded by {row.recovery.actorId}: {row.recovery.reason}. {row.recovery.applied ? 'Missing effects applied.' : 'Original effects were already applied.'}</p>
-        : <button type="button" className={control} disabled={!data?.recoveryEnabled} onClick={event => {
+        : <Button type="button" variant="secondary" disabled={!data?.recoveryEnabled} onClick={event => {
           trigger.current = event.currentTarget; setReason(''); setDone(false); mutation.reset(); setSelected(row);
-        }}>Review lifecycle recovery</button>}
+        }}>Review lifecycle recovery</Button>}
     </article>)}
     {valid && !data.recoveryEnabled && <p>Recovery writes are disabled for this environment.</p>}
-    <div className="flex flex-wrap items-center gap-3">
-      <button type="button" className={control} disabled={page === 1 || report.isFetching || !!selected} onClick={() => setPage(value => value - 1)}>Previous recovery events</button>
-      <span>Page {page}{valid ? ` of ${Math.max(1, Math.ceil(data.total / data.limit))}` : ''}</span>
-      <button type="button" className={control} disabled={!valid || page * data.limit >= data.total || report.isFetching || !!selected} onClick={() => setPage(value => value + 1)}>Next recovery events</button>
-    </div>
-    <dialog ref={dialog} aria-labelledby="recover-confirm-heading" aria-describedby="recover-confirm-description"
-      className="m-auto w-[calc(100%_-_2rem)] max-w-xl max-h-[90dvh] overflow-y-auto rounded-card border border-border bg-surface p-6 text-secondary backdrop:bg-black/50"
-      onCancel={event => { if (mutation.isPending) event.preventDefault(); }}
-      onClose={() => { setSelected(null); if (trigger.current?.isConnected) trigger.current.focus(); else heading.current?.focus(); }}>
-      <h3 id="recover-confirm-heading" className="text-xl font-semibold">Confirm database lifecycle recovery</h3>
-      <p id="recover-confirm-description" className="mt-3">{mode} · {selected?.orderNumber} · {selected?.id}. The original DEAD event stays unchanged. No provider operation will be resent.</p>
-      <form className="mt-4 space-y-4" onSubmit={event => { event.preventDefault(); if (!mutation.isPending && !done) mutation.mutate(); }}>
-        <label htmlFor="recovery-reason" className="flex flex-col gap-2">Audit reason (required)
-          <textarea id="recovery-reason" className={`${control} w-full`} required maxLength={500} value={reason} disabled={mutation.isPending || done} onChange={event => setReason(event.target.value)} />
-        </label>
+    {valid && !report.isError && <Pagination page={page} totalPages={Math.max(1, Math.ceil(data.total / data.limit))} onPageChange={setPage} disabled={report.isFetching || !!selected} labels={{ navAria: 'Recovery pages', previousAria: 'Previous recovery events', nextAria: 'Next recovery events' }} />}
+    {selected && <Modal isOpen native size="lg" dismissible={!mutation.isPending} closeOnOverlayClick={false} onClose={close} aria-labelledby="recover-confirm-heading" aria-describedby="recover-confirm-description">
+      <form className="flex min-h-0 flex-col" onSubmit={event => { event.preventDefault(); if (!mutation.isPending && !done) mutation.mutate(); }}>
+        <ModalHeader><h3 id="recover-confirm-heading">Confirm database lifecycle recovery</h3></ModalHeader>
+        <ModalBody className="space-y-4 text-sm text-secondary">
+        <p id="recover-confirm-description" className="[overflow-wrap:anywhere]">{mode} · {selected.orderNumber} · {selected.id}. The original DEAD event stays unchanged. No provider operation will be resent.</p>
+        <Textarea label="Audit reason (required)" id="recovery-reason" fullWidth required maxLength={500} value={reason} disabled={mutation.isPending || done} onChange={event => setReason(event.target.value)} />
         {mutation.isError && <p role="alert">{mutation.error.message}. The outcome may be unknown; retry only this same event after reviewing the records.</p>}
         <p role="status" aria-live="polite">{done ? 'Recovery recorded. Original financial evidence and attempt history were preserved.' : mutation.isPending ? 'Verifying original evidence and applying database recovery…' : ''}</p>
-        <div className="flex flex-wrap gap-3">
-          <button type="button" className={control} disabled={mutation.isPending} onClick={close}>{done ? 'Close recovery confirmation' : 'Cancel recovery'}</button>
-          <button type="submit" className={`${control} font-semibold`} disabled={mutation.isPending || done || !reason.trim()}>Confirm lifecycle recovery</button>
-        </div>
+        </ModalBody>
+        <ModalFooter className="flex-wrap">
+          <Button type="button" variant="secondary" disabled={mutation.isPending} onClick={close}>{done ? 'Close recovery confirmation' : 'Cancel recovery'}</Button>
+          <Button type="submit" loading={mutation.isPending} disabled={done || !reason.trim()}>Confirm lifecycle recovery</Button>
+        </ModalFooter>
       </form>
-    </dialog>
+    </Modal>}
   </section>;
 }

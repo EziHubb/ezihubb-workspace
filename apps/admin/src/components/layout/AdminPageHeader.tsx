@@ -6,9 +6,10 @@ interface AdminPageHeaderProps {
   actions?:  React.ReactNode;
   /** Query key prefix to pass to ReloadButton. Pass false to hide reload button. */
   queryKey?: unknown[] | false;
+  queryKeys?: unknown[][];
 }
 
-export function AdminPageHeader({ title, subtitle, actions, queryKey }: AdminPageHeaderProps) {
+export function AdminPageHeader({ title, subtitle, actions, queryKey, queryKeys }: AdminPageHeaderProps) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
       <div className="min-w-0">
@@ -20,7 +21,7 @@ export function AdminPageHeader({ title, subtitle, actions, queryKey }: AdminPag
 
       <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">
         {actions}
-        {queryKey !== false && <ReloadButton queryKey={queryKey} />}
+        {queryKey !== false && <ReloadButton queryKey={queryKey} queryKeys={queryKeys} />}
       </div>
     </div>
   );

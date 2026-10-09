@@ -7,10 +7,11 @@ import { useQueryClient } from '@tanstack/react-query';
 interface ReloadButtonProps {
   /** Specific queryKey prefix to invalidate. If omitted, refetches all active queries. */
   queryKey?: unknown[];
+  queryKeys?: unknown[][];
   className?: string;
 }
 
-export function ReloadButton({ queryKey, className }: ReloadButtonProps) {
+export function ReloadButton({ queryKey, queryKeys, className }: ReloadButtonProps) {
   const qc       = useQueryClient();
   const [spinning, setSpinning] = useState(false);
 
@@ -18,7 +19,9 @@ export function ReloadButton({ queryKey, className }: ReloadButtonProps) {
     if (spinning) return;
     setSpinning(true);
     try {
-      if (queryKey) {
+      if (queryKeys) {
+        await Promise.all(queryKeys.map(key => qc.refetchQueries({ queryKey: key, type: 'active' })));
+      } else if (queryKey) {
         await qc.refetchQueries({ queryKey, type: 'active' });
       } else {
         await qc.refetchQueries({ type: 'active' });

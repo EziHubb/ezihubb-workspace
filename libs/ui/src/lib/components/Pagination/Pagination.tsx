@@ -24,6 +24,7 @@ export interface PaginationProps {
   className?:   string;
   /** Translated labels — every field falls back to its English default. */
   labels?:      PaginationLabels;
+  disabled?:    boolean;
 }
 
 const defaultLabels: Required<PaginationLabels> = {
@@ -69,6 +70,7 @@ export const Pagination: React.FC<PaginationProps> = ({
   onPageChange,
   className = '',
   labels,
+  disabled = false,
 }) => {
   if (totalPages <= 1) return null;
 
@@ -87,7 +89,7 @@ export const Pagination: React.FC<PaginationProps> = ({
       <div className="flex items-center gap-3 md:hidden">
         <button
           onClick={() => onPageChange(page - 1)}
-          disabled={page === 1}
+          disabled={disabled || page <= 1}
           aria-label={L.previousAria}
           className={`${btnBase} gap-1 px-3 py-2 text-sm font-medium text-secondary disabled:opacity-40 hover:text-primary`}
         >
@@ -100,7 +102,7 @@ export const Pagination: React.FC<PaginationProps> = ({
 
         <button
           onClick={() => onPageChange(page + 1)}
-          disabled={page === totalPages}
+          disabled={disabled || page >= totalPages}
           aria-label={L.nextAria}
           className={`${btnBase} gap-1 px-3 py-2 text-sm font-medium text-secondary disabled:opacity-40 hover:text-primary`}
         >
@@ -112,7 +114,7 @@ export const Pagination: React.FC<PaginationProps> = ({
       <div className="hidden md:flex items-center gap-1">
         <button
           onClick={() => onPageChange(page - 1)}
-          disabled={page === 1}
+          disabled={disabled || page <= 1}
           aria-label={L.previousAria}
           className={`${btnBase} ${squareBtn}`}
         >
@@ -130,6 +132,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           ) : (
             <button
               key={p}
+              disabled={disabled}
               onClick={() => onPageChange(p as number)}
               aria-label={L.pageAria(p)}
               aria-current={p === page ? 'page' : undefined}
@@ -148,7 +151,7 @@ export const Pagination: React.FC<PaginationProps> = ({
 
         <button
           onClick={() => onPageChange(page + 1)}
-          disabled={page === totalPages}
+          disabled={disabled || page >= totalPages}
           aria-label={L.nextAria}
           className={`${btnBase} ${squareBtn}`}
         >

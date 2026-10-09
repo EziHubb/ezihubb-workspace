@@ -3,6 +3,7 @@
 import React, {
   useCallback,
   useEffect,
+  useId,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -44,8 +45,8 @@ interface MenuPosition {
  * Shared single-value select for the Admin UI.
  *
  * The menu is a custom listbox rather than the browser/OS native picker, so
- * every screen gets the same option styling. It is portalled to the document
- * body to avoid being clipped by drawers and scrolling modal bodies.
+ * every screen gets the same option styling. It is portalled outside scrolling
+ * panels, within the active modal when present, so native dialogs keep it interactive.
  */
 export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
   (
@@ -74,6 +75,9 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     const [activeIndex, setActiveIndex] = useState(-1);
     const [position, setPosition] = useState<MenuPosition | null>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
+    const generatedId = useId();
+    const selectId = id ?? generatedId;
+    const listboxId = `${selectId}-listbox`;
 
     useImperativeHandle(forwardedRef, () => triggerRef.current as HTMLButtonElement);
 
@@ -122,6 +126,10 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       };
     }, [open, updatePosition]);
 
+    useEffect(() => {
+      if (open && activeIndex >= 0) document.getElementById(`${listboxId}-option-${activeIndex}`)?.scrollIntoView({ block: 'nearest' });
+    }, [open, activeIndex, listboxId, position?.origin]);
+
     const nextEnabled = (start: number, direction: 1 | -1) => {
       if (!options.length) return -1;
       for (let offset = 1; offset <= options.length; offset++) {
@@ -160,6 +168,7 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
         setOpen(false);
         return;
       }
+      if (event.key === 'Tab') setOpen(false);
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
         if (!open) showMenu();
@@ -195,14 +204,16 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
           <>
             <button
               type="button"
+              tabIndex={-1}
               aria-label="Close options"
               className="fixed inset-0 z-[9998] cursor-default"
               onClick={() => setOpen(false)}
             />
             <div
-              id={id ? `${id}-listbox` : undefined}
+              id={listboxId}
               role="listbox"
               aria-label={buttonProps['aria-label']}
+              aria-labelledby={buttonProps['aria-label'] ? undefined : selectId}
               className={`fixed z-[9999] overflow-y-auto rounded-card border border-border/60 bg-surface p-1.5 shadow-floating animate-fade-in ${
                 position.origin === 'bottom' ? 'origin-bottom' : 'origin-top'
               }`}
@@ -220,7 +231,9 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                 return (
                   <button
                     key={option.value}
+                    id={`${listboxId}-option-${index}`}
                     type="button"
+                    tabIndex={-1}
                     role="option"
                     aria-selected={checked}
                     disabled={option.disabled}
@@ -244,7 +257,7 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               })}
             </div>
           </>,
-          document.body,
+          triggerRef.current?.closest('[data-ui-modal-portal], dialog[open]') ?? document.body,
         )
       : null;
 
@@ -254,13 +267,14 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
         <button
           {...buttonProps}
           ref={triggerRef}
-          id={id}
+          id={selectId}
           type="button"
           disabled={disabled}
           role="combobox"
           aria-expanded={open}
           aria-haspopup="listbox"
-          aria-controls={id ? `${id}-listbox` : undefined}
+          aria-controls={open ? listboxId : undefined}
+          aria-activedescendant={open && position && activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
           aria-required={required || undefined}
           onBlur={onBlur}
           onKeyDown={onKeyDown}

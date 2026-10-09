@@ -106,7 +106,7 @@ export default function AffiliateDashboardPage() {
         <p className="mt-3 text-sm">{vi ? 'Số liệu và hoa hồng lịch sử bên dưới không phải tiền khả dụng để rút. Xem tài khoản đã xác minh để kiểm tra số dư và điều kiện chi trả hiện tại.' : 'The historical earnings and commissions below are not withdrawable funds. Open the verified account for current balances and payout eligibility.'}</p>
         <Link
           href={`/${locale}/affiliate/payouts`}
-          className="mt-4 inline-flex items-center gap-2 text-sm font-bold px-5 py-3 rounded-button bg-primary text-white"
+          className="mt-4 inline-flex items-center gap-2 text-sm font-bold px-5 py-3 rounded-pill bg-primary text-white hover:bg-primary-dark transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
         >
           {vi ? 'Xem số dư đã xác minh' : 'View verified balances'}
         </Link>

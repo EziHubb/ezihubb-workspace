@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useLocale } from 'next-intl';
 import type { UserDto } from '@ezihubb/types';
 import { API_ROUTES } from '@ezihubb/constants';
+import { Button, Input } from '@ezihubb/ui';
 import { api } from '../../lib/api-client';
 
 export type CompletedSignIn = { accessToken: string; user: UserDto };
@@ -57,19 +58,16 @@ export function TotpChallengeForm({ partialToken, onComplete, onCancel }: {
       <p id={`${id}-hint`} className="text-sm text-muted">
         {vi ? 'Nhập mã từ ứng dụng xác thực hoặc một mã dự phòng chưa sử dụng.' : 'Enter the code from your authenticator app or an unused backup code.'}
       </p>
-      <label htmlFor={id} className="block space-y-2 text-sm font-medium"><span>{vi ? 'Mã xác thực' : 'Authentication code'}</span>
-      <input ref={input} id={id} value={code} onChange={(e) => setCode(e.target.value)}
+      <Input label={vi ? 'Mã xác thực' : 'Authentication code'} ref={input} id={id} value={code} onChange={(e) => setCode(e.target.value)}
         autoComplete="one-time-code" type="text" required={!completed.current} minLength={6} maxLength={16}
-        disabled={busy || !!completed.current} aria-invalid={!!error} aria-describedby={`${id}-hint ${id}-error`}
-        className="min-h-11 w-full rounded-button border border-border bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" />
-      </label>
-      <p id={`${id}-error`} role="alert" className="text-sm text-error">{error}</p>
-      <button type="submit" disabled={busy} className="min-h-11 w-full rounded-button bg-primary px-4 py-3 font-semibold text-white disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+        disabled={busy || !!completed.current} error={error} aria-describedby={`${id}-hint ${error ? `${id}-error` : ''}`}
+        fullWidth className="min-h-11" />
+      <Button type="submit" fullWidth size="lg" loading={busy}>
         {busy ? (vi ? 'Đang xác minh…' : 'Verifying…') : (vi ? 'Xác minh và đăng nhập' : 'Verify and sign in')}
-      </button>
-      <button type="button" disabled={busy} onClick={onCancel} className="min-h-11 w-full rounded-button border border-border px-4 py-2 text-sm disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary">
+      </Button>
+      <Button type="button" variant="secondary" fullWidth disabled={busy} onClick={onCancel}>
         {vi ? 'Quay lại đăng nhập' : 'Back to sign-in'}
-      </button>
+      </Button>
     </form>
   );
 }

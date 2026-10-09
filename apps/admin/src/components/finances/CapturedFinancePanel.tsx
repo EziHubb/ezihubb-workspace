@@ -2,27 +2,23 @@
 
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Badge, Button, Input, Modal, ModalBody, ModalFooter, ModalHeader, Pagination } from '@ezihubb/ui';
 import { api } from '../../lib/api-client';
 import { BeneficiaryKind, CapturedBalance, CapturedLot, CapturedPayout, EconomicHistory, MoneyMode,
   formatCapturedUsd as money, minorToUsdInput, usdInputToMinor } from '../../lib/economic-finances';
 import { EconomicDebtRecovery } from './EconomicDebtRecovery';
 
-const control = 'min-h-11 rounded-button border border-border px-3 py-2 bg-surface text-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50';
 type Props = { actorId: string; storeId: string; platform?: { kind: BeneficiaryKind; beneficiaryId: string }; mode: MoneyMode };
 type Confirmation = { type: 'request'; amountMinor: string } | { type: 'verify' | 'reject'; payout: CapturedPayout };
 type PendingRequest = { idempotencyKey: string; amountMinor: string };
 
 function PageControls({ page, total, change }: { page: number; total: number; change: (page: number) => void }) {
-  return <div className="flex items-center justify-between gap-3 mt-4 text-sm">
-    <button className={control} disabled={page <= 1} onClick={() => change(page - 1)}>Previous</button>
-    <span>Page {page} of {Math.max(1, Math.ceil(total / 20))}</span>
-    <button className={control} disabled={page * 20 >= total} onClick={() => change(page + 1)}>Next</button>
-  </div>;
+  return <Pagination page={page} totalPages={Math.max(1, Math.ceil(total / 20))} onPageChange={change} className="mt-4" />;
 }
 function LoadError({ retry }: { retry: () => void }) {
   return <div role="alert" className="p-4 border border-error rounded-card space-y-3">
     <p>Financial data could not be loaded. No balance or settlement has been assumed.</p>
-    <button className={control} onClick={retry}>Retry loading</button>
+    <Button type="button" variant="secondary" onClick={retry}>Retry loading</Button>
   </div>;
 }
 
@@ -35,7 +31,6 @@ export function CapturedFinancePanel({ actorId, storeId, platform, mode }: Props
   const [proof, setProof] = useState(''), [error, setError] = useState('');
   const [lookupReferences, setLookupReferences] = useState<Record<string, string>>({});
   const [pending, setPending] = useState<PendingRequest | null>(null), [storageReady, setStorageReady] = useState(false);
-  const dialog = useRef<HTMLDialogElement>(null);
   const submitting = useRef(false);
   const prefix = platform ? '/admin/economic-finances' : '/admin/finances/economic';
   const scope = { provenance: mode, currency: 'USD', ...(platform ?? {}) };
@@ -55,13 +50,6 @@ export function CapturedFinancePanel({ actorId, storeId, platform, mode }: Props
       setStorageReady(true);
     } catch { setError('This browser could not restore a pending payout request. Contact support before creating another request.'); }
   }, [storageKey]);
-  useEffect(() => {
-    if (!confirmation) return;
-    const trigger = document.activeElement as HTMLElement | null;
-    const modal = dialog.current;
-    modal?.showModal();
-    return () => { modal?.close(); if (trigger?.isConnected) trigger.focus(); };
-  }, [confirmation]);
 
   const mutation = useMutation({
     mutationFn: async (choice: Confirmation) => {
@@ -85,7 +73,10 @@ export function CapturedFinancePanel({ actorId, storeId, platform, mode }: Props
       setError(''); setConfirmation(null);
     },
     onError: () => setError('The action could not be confirmed. Refresh the history and retry the same request or transfer reference; do not send another transfer.'),
-    onSettled: () => { submitting.current = false; return qc.invalidateQueries({ queryKey: cacheKey }); },
+    onSettled: () => { submitting.current = false; return Promise.all([
+      qc.invalidateQueries({ queryKey: cacheKey }),
+      qc.invalidateQueries({ queryKey: ['economic-summary', actorId] }),
+    ]); },
   });
   const available = balance.data;
   const amountMinor = usdInputToMinor(amount);
@@ -116,8 +107,8 @@ export function CapturedFinancePanel({ actorId, storeId, platform, mode }: Props
           ...(available.reversedMinor !== undefined ? [['Reversed by refunds', available.reversedMinor, 'Verified original-allocation reversals; paid payout evidence remains unchanged.']] : []),
           ...(available.debtRecoveredMinor !== undefined ? [['Debt recovered', available.debtRecoveredMinor, 'Eligible captured funds retained with immutable audit evidence; no external debit.']] : []),
         ] as const).map(([label, value, description]) => <div key={label} className="border border-border bg-surface rounded-card p-5 min-w-0">
-          <dt className="text-sm font-semibold">{label}</dt><dd className="mt-2 text-2xl font-bold tabular-nums break-words">{money(value)}</dd>
-          <p className="mt-2 text-sm">{description}</p>
+          <dt className="text-sm text-muted">{label}</dt><dd className="mt-2 font-display text-2xl font-bold tabular-nums break-words">{money(value)}</dd>
+          <p className="mt-2 text-sm text-muted">{description}</p>
         </div>)}
       </dl>
       {platform && available.debtRecoveryEnabled && <EconomicDebtRecovery kind={platform.kind} beneficiaryId={platform.beneficiaryId} mode={mode} debtMinor={available.debtMinor} />}
@@ -126,22 +117,20 @@ export function CapturedFinancePanel({ actorId, storeId, platform, mode }: Props
         <p className="text-sm">Minimum {money(available.minimumPayoutMinor)}. Recipient details are verified separately; this form cannot change the destination.</p>
         {!available.payoutRequestsEnabled && <p>Payout requests are currently disabled or a verified destination is not configured.</p>}
         {pending && <p role="status">An earlier request is awaiting confirmation. Its amount and request key are locked; retry to recover its result.</p>}
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-          <label className="flex flex-col gap-2" htmlFor="payout-amount">Amount (USD)
-            <input id="payout-amount" className={control} inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} readOnly={!!pending} required aria-describedby="payout-feedback" />
-          </label>
-          <button className={`${control} font-semibold`} disabled={mutation.isPending || !storageReady || (!pending && !canRequest)}>{pending ? 'Retry same request' : 'Review request'}</button>
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+          <Input label="Amount (USD)" id="payout-amount" className="min-h-11" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} readOnly={!!pending} required aria-describedby="payout-feedback" />
+          <Button type="submit" disabled={mutation.isPending || !storageReady || (!pending && !canRequest)}>{pending ? 'Retry same request' : 'Review request'}</Button>
         </div>
       </form>}
     </>}
     <div id="payout-feedback" aria-live="polite">{message && <p role="status">{message}</p>}{error && <p role="alert" className="text-error">{error}</p>}</div>
     <section aria-labelledby="payout-history-title" className="space-y-4">
       <div className="flex justify-between items-center gap-3"><h2 id="payout-history-title" className="text-lg font-semibold">Payout history</h2>
-        <button className={control} onClick={() => void qc.invalidateQueries({ queryKey: cacheKey })}>Refresh</button></div>
+        <Button type="button" variant="secondary" onClick={() => void qc.invalidateQueries({ queryKey: cacheKey })}>Refresh</Button></div>
       {payouts.isError ? <LoadError retry={() => void payouts.refetch()} /> : !payouts.data ? <p role="status">Loading payouts…</p> : <>
         {!payouts.data.data.length && <p className="p-5 border border-border rounded-card">No payouts in this account and mode.</p>}
         {payouts.data.data.map(row => <article key={row.id} className="border border-border rounded-card bg-surface p-5 space-y-3">
-          <div className="flex flex-wrap justify-between gap-3"><h3 className="font-semibold break-words">{row.id} · {money(row.amountMinor)}</h3><span className="font-semibold">{row.state}</span></div>
+          <div className="flex flex-wrap justify-between items-center gap-3"><h3 className="font-semibold break-words">{row.id} · {money(row.amountMinor)}</h3><Badge variant={row.state === 'PAID' ? 'COMPLETED' : row.state === 'REJECTED' ? 'DISPUTED' : 'PENDING_PAYMENT'}>{row.state}</Badge></div>
           <p className="text-sm">Requested {new Date(row.createdAt).toLocaleString()}</p>
           {row.state === 'VERIFYING' && <p>Verification is pending. Funds remain reserved; retry the same reference only.</p>}
           {row.transferReference && <p className="text-sm break-words">Transfer reference: {row.transferReference}</p>}
@@ -152,8 +141,8 @@ export function CapturedFinancePanel({ actorId, storeId, platform, mode }: Props
             <ul className="space-y-2 mt-2">{row.allocations.map(part => <li key={part.lotId} className="text-sm break-words">Capture {part.captureId} / {part.sourceKey} — {money(part.amountMinor)}</li>)}</ul>
           </details>
           {platform && (row.state === 'REQUESTED' || row.state === 'VERIFYING') && <div className="flex flex-wrap gap-3">
-            <button className={control} disabled={mutation.isPending} onClick={() => open({ type: 'verify', payout: row })}>{row.state === 'VERIFYING' ? 'Retry verification' : 'Verify settlement'}</button>
-            {row.state === 'REQUESTED' && <button className={control} disabled={mutation.isPending} onClick={() => open({ type: 'reject', payout: row })}>Reject request</button>}
+            <Button type="button" disabled={mutation.isPending} onClick={() => open({ type: 'verify', payout: row })}>{row.state === 'VERIFYING' ? 'Retry verification' : 'Verify settlement'}</Button>
+            {row.state === 'REQUESTED' && <Button type="button" variant="destructive" disabled={mutation.isPending} onClick={() => open({ type: 'reject', payout: row })}>Reject request</Button>}
           </div>}
         </article>)}
         <PageControls page={payoutPage} total={payouts.data.total} change={setPayoutPage} />
@@ -175,25 +164,22 @@ export function CapturedFinancePanel({ actorId, storeId, platform, mode }: Props
         <PageControls page={lotPage} total={lots.data.total} change={setLotPage} />
       </>}
     </section>
-    {confirmation && <dialog ref={dialog} onCancel={event => { if (mutation.isPending) event.preventDefault(); else close(); }} onClose={close}
-      aria-labelledby="payout-confirm-title" style={{ margin: 'auto', width: 'calc(100% - 2rem)', maxHeight: 'calc(100dvh - 2rem)' }} className="rounded-card border border-border bg-surface text-secondary p-6 max-w-lg overflow-y-auto backdrop:bg-black/50">
-      <form onSubmit={event => { event.preventDefault(); if (!submitting.current) { submitting.current = true; mutation.mutate(confirmation); } }} className="space-y-4">
-        <h2 id="payout-confirm-title" className="text-xl font-semibold">{confirmation.type === 'request' ? 'Confirm payout request' : confirmation.type === 'reject' ? 'Reject payout request' : 'Verify existing transfer'}</h2>
+    {confirmation && <Modal isOpen native dismissible={!mutation.isPending} closeOnOverlayClick={false} onClose={close} aria-labelledby="payout-confirm-title">
+      <form onSubmit={event => { event.preventDefault(); if (!submitting.current) { submitting.current = true; mutation.mutate(confirmation); } }} className="flex min-h-0 flex-col">
+        <ModalHeader><h2 id="payout-confirm-title">{confirmation.type === 'request' ? 'Confirm payout request' : confirmation.type === 'reject' ? 'Reject payout request' : 'Verify existing transfer'}</h2></ModalHeader>
+        <ModalBody className="space-y-4 text-sm text-secondary">
         <p>{mode} · {money(confirmation.type === 'request' ? confirmation.amountMinor : confirmation.payout.amountMinor)} USD</p>
         {confirmation.type === 'request' ? <p>This reserves the exact amount. It does not send a transfer.</p> : confirmation.type === 'verify' ? <>
           <p>Only use an existing transfer with this payout ID in its provider metadata. Once verification starts, the reference cannot be changed or the reservation released without reconciliation.</p>
-          <label className="block" htmlFor="payout-proof">Transfer reference
-            <input id="payout-proof" className={`${control} w-full mt-2`} value={confirmation.payout.transferReference ?? lookupReferences[confirmation.payout.id] ?? proof} onChange={e => setProof(e.target.value)} readOnly={!!(confirmation.payout.transferReference ?? lookupReferences[confirmation.payout.id])} pattern="[A-Za-z0-9_]{1,150}" required />
-          </label>
-        </> : <label className="block" htmlFor="payout-proof">Reason
-          <input id="payout-proof" className={`${control} w-full mt-2`} value={proof} onChange={e => setProof(e.target.value)} maxLength={500} required />
-        </label>}
+          <Input label="Transfer reference" id="payout-proof" fullWidth className="min-h-11" value={confirmation.payout.transferReference ?? lookupReferences[confirmation.payout.id] ?? proof} onChange={e => setProof(e.target.value)} readOnly={!!(confirmation.payout.transferReference ?? lookupReferences[confirmation.payout.id])} pattern="[A-Za-z0-9_]{1,150}" required />
+        </> : <Input label="Reason" id="payout-proof" fullWidth className="min-h-11" value={proof} onChange={e => setProof(e.target.value)} maxLength={500} required />}
         {error && <p role="alert" className="text-error">{error}</p>}
-        <div className="flex flex-wrap justify-end gap-3">
-          <button type="button" className={control} disabled={mutation.isPending} onClick={close}>Cancel</button>
-          <button className={`${control} font-semibold`} disabled={mutation.isPending || (confirmation.type === 'reject' && !proof.trim())}>{mutation.isPending ? 'Checking…' : 'Confirm'}</button>
-        </div>
+        </ModalBody>
+        <ModalFooter className="flex-wrap">
+          <Button type="button" variant="secondary" disabled={mutation.isPending} onClick={close}>Cancel</Button>
+          <Button type="submit" variant={confirmation.type === 'reject' ? 'destructive' : 'primary'} loading={mutation.isPending} disabled={mutation.isPending || (confirmation.type === 'reject' && !proof.trim())}>{mutation.isPending ? 'Checking…' : 'Confirm'}</Button>
+        </ModalFooter>
       </form>
-    </dialog>}
+    </Modal>}
   </div>;
 }
