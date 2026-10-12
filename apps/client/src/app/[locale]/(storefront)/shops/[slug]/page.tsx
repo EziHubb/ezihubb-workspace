@@ -9,7 +9,7 @@ import { StorePageClient } from './StorePageClient';
 import { FollowShopButton } from '../../../../../components/shops/FollowShopButton';
 import { MarketingTracker } from '../../../../../components/providers/MarketingTracker';
 import { ShareSaveWidget } from '../../../../../components/shops/ShareSaveWidget';
-import { buildAlternates } from '../../../../../lib/seo';
+import { buildShopMetadata } from '../../../../../lib/shop-seo';
 import { fmtRating, safeNum } from '@ezihubb/utils';
 
 interface StorePublicDto {
@@ -83,18 +83,12 @@ export async function generateMetadata({
 
   if (!store) return { title: t('storePage.storeNotFoundTitle'), robots: { index: false, follow: false } };
 
-  return {
-    title:       store.name,
-    description: (store.description ?? store.aboutHeadline ?? store.tagline)?.slice(0, 160)
-      ?? t('storePage.metaDescriptionFallback', { name: store.name }),
-    openGraph: {
-      title:       store.name,
-      description: (store.description ?? store.aboutHeadline ?? store.tagline)?.slice(0, 160),
-      images:      store.bannerUrl ? [store.bannerUrl] : [],
-      url:         `/shops/${slug}`,
-    },
-    alternates: buildAlternates(`/shops/${slug}`, locale),
-  };
+  return buildShopMetadata(store, {
+    slug,
+    locale,
+    formatTitle: (name) => t('storePage.metaTitle', { name }),
+    formatDescription: (name) => t('storePage.metaDescriptionFallback', { name }),
+  });
 }
 
 export const dynamic = 'force-dynamic';

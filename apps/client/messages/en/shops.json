@@ -1,5 +1,6 @@
 {
   "storePage": {
+    "metaTitle": "{name} — Shop",
     "storeNotFoundTitle": "Store not found",
     "metaDescriptionFallback": "Shop {name} on EziHubb.",
     "bannerAlt": "{name} banner",

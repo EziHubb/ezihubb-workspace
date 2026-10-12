@@ -1,5 +1,6 @@
 {
   "storePage": {
+    "metaTitle": "{name} — 店铺",
     "storeNotFoundTitle": "未找到店铺",
     "metaDescriptionFallback": "在 EziHubb 上逛逛 {name}。",
     "bannerAlt": "{name} 的横幅图片",

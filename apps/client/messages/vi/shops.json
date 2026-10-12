@@ -1,5 +1,6 @@
 {
   "storePage": {
+    "metaTitle": "{name} — Cửa hàng",
     "storeNotFoundTitle": "Không tìm thấy cửa hàng",
     "metaDescriptionFallback": "Mua sắm tại {name} trên EziHubb.",
     "bannerAlt": "Ảnh bìa {name}",
