@@ -330,6 +330,7 @@ function PriceRangeFilter({
           onChange={(e) => setLocalMin(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={t('minPlaceholder')}
+          aria-label={t('chips.minPrice')}
           min={0}
           className="w-full border border-border rounded-lg pl-6 pr-2 py-1.5 text-sm bg-background outline-none focus:border-primary transition-colors"
         />
@@ -345,6 +346,7 @@ function PriceRangeFilter({
           onChange={(e) => setLocalMax(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={t('maxPlaceholder')}
+          aria-label={t('chips.maxPrice')}
           min={0}
           className="w-full border border-border rounded-lg pl-6 pr-2 py-1.5 text-sm bg-background outline-none focus:border-primary transition-colors"
         />

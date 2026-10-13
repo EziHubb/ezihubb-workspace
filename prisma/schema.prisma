@@ -18,6 +18,24 @@ model TrackingDeliveryReceipt {
   @@index([orderId])
 }
 
+// Prospective, reference-only queue handoff. No historical order scan/backfill.
+// Deliberately independent of order deletion: the delivery receipt survives it.
+model OrderEventOutbox {
+  id            String   @id @default(dbgenerated("nanoid(12)"))
+  orderId       String
+  eventType     String   @db.VarChar(30)
+  state         String   @default("PENDING") @db.VarChar(10)
+  attempts      Int      @default(0)
+  nextAttemptAt DateTime @default(now())
+  leaseToken    String?  @db.VarChar(36)
+  leaseUntil    DateTime?
+  processedAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  @@unique([eventType, orderId])
+  @@index([state, nextAttemptAt])
+}
+
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
 // Dormant prospective settlement foundation. Absence of EconomicOrderContext
@@ -169,7 +187,8 @@ model EconomicLifecycleRecovery {
 model EconomicExternalEffect {
   id                String @id @default(dbgenerated("nanoid(12)"))
   contextId         String
-  context           EconomicOrderContext @relation(fields: [contextId], references: [id], onDelete: Restrict)
+  // Evidence references are immutable; match the existing SQL NO ACTION guard.
+  context           EconomicOrderContext @relation(fields: [contextId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   effectKey         String @unique @db.VarChar(64)
   kind              String @db.VarChar(30)
   storeOrderId      String?
@@ -197,7 +216,7 @@ model EconomicExternalEffect {
 model EconomicNotificationReceipt {
   id             String @id @default(dbgenerated("nanoid(12)"))
   eventId        String
-  event          EconomicOutbox @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  event          EconomicOutbox @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   recipientId    String
   notificationId String @unique
   createdAt      DateTime @default(now())
@@ -352,7 +371,7 @@ model EconomicRefundJournalEntry {
   createdAt     DateTime @default(now())
 
   @@unique([refundId, entryKey])
-  @@index([account, beneficiaryId, currency])
+  @@index([account, beneficiaryId, currency], map: "EconomicRefundJournalEntry_account_beneficiary_currency_idx")
 }
 
 model EconomicRefundLotReversal {

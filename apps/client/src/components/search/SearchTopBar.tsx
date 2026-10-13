@@ -167,7 +167,7 @@ export function SearchTopBar({
           {/* Right: sort select */}
           <div className="ml-auto w-36 shrink-0 sm:w-48">
             <Select
-              aria-label="Sort results"
+              aria-label={t('sortResults')}
               value={sort}
               onChange={(e) => onSortChange(e.target.value)}
               options={SEARCH_SORT_OPTIONS}

@@ -10,6 +10,7 @@ import { OrderStatus, PaymentMethod, PaymentStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
 import { EconomicPaymentsService } from './economic-payments.service';
+import { OrderEventOutboxService, recordOrderEvent } from '../../queue/order-event-outbox.service';
 
 const PAYPAL_TOKEN_CACHE_KEY = 'paypal:access_token';
 
@@ -26,6 +27,7 @@ export class PaypalService {
     private readonly redis: RedisService,
     private readonly config: ConfigService,
     private readonly economicPayments: EconomicPaymentsService,
+    private readonly orderOutbox: OrderEventOutboxService,
   ) {
     const mode = config.get<string>('PAYPAL_MODE') ?? 'sandbox';
     this.baseUrl =
@@ -173,7 +175,7 @@ export class PaypalService {
       await this.economicPayments.capturePaypal(paypalOrderId);
       return;
     }
-    if (payment.status === PaymentStatus.PAID) return; // Already captured — idempotent
+    if (payment.status === PaymentStatus.PAID) { this.orderOutbox.kick(); return; }
 
     const token = await this.getAccessToken();
 
@@ -203,6 +205,12 @@ export class PaypalService {
     const now = new Date();
 
     await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${payment.orderId} FOR UPDATE`;
+      const current = await tx.payment.findUniqueOrThrow({ where: { id: payment.id }, include: { order: true } });
+      if (current.status === PaymentStatus.PAID) return;
+      if (current.status !== PaymentStatus.PENDING || current.order.status !== OrderStatus.PENDING_PAYMENT || current.order.adminArchivedAt) {
+        throw new BadRequestException('PayPal capture requires reconciliation; order is no longer awaiting payment');
+      }
       await tx.payment.update({
         where: { id: payment.id },
         data:  {
@@ -234,8 +242,10 @@ export class PaypalService {
           where: { cart: { userId: payment.order.userId } },
         });
       }
+      await recordOrderEvent(tx, 'ORDER_PAID', payment.orderId);
     });
 
+    this.orderOutbox.kick();
     this.logger.log(`PayPal captured: ${captureId} for order ${payment.orderId}`);
   }
 

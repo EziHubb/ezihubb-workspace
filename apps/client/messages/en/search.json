@@ -1,4 +1,7 @@
 {
+  "heading": "Personalized gifts",
+  "headingForQuery": "Search results for {query}",
+  "sortResults": "Sort results",
   "filters": "Filters",
   "clearAll": "Clear all",
   "specialOffers": "Special offers",

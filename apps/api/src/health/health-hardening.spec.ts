@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { get, IncomingHttpHeaders } from 'node:http';
 import { HeadBucketCommand } from '@aws-sdk/client-s3';
 import { HealthController } from './health.controller';
 import { PrismaService } from '../prisma/prisma.service';
@@ -11,6 +12,25 @@ import { StorageService } from '../common/services/storage.service';
 import { TransformInterceptor } from '../common/interceptors/transform.interceptor';
 import { HttpExceptionFilter } from '../common/filters/http-exception.filter';
 jest.mock('@sentry/node', () => ({ withScope: jest.fn(), captureException: jest.fn() }));
+
+// Own and consume the complete response, including liveness. Avoid a global
+// fetch/undici pool outliving the ephemeral Nest server in parallel Jest workers.
+function getHealth(url: string) {
+  return new Promise<{ status: number; headers: IncomingHttpHeaders; body: unknown }>((resolve, reject) => {
+    const request = get(url, { agent: false, headers: { Connection: 'close' } }, response => {
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', chunk => { body += chunk; });
+      response.on('error', reject);
+      response.on('end', () => {
+        try { resolve({ status: response.statusCode ?? 0, headers: response.headers, body: JSON.parse(body) }); }
+        catch (error) { reject(error); }
+      });
+    });
+    request.on('error', reject);
+    request.setTimeout(5000, () => request.destroy(new Error('Synthetic health HTTP timeout')));
+  });
+}
 
 function fixture() {
   const prisma = { $queryRaw: jest.fn().mockResolvedValue([{ '?column?': 1 }]) };
@@ -96,15 +116,15 @@ describe('Truthful dependency readiness', () => {
     try {
       const origin = await app.getUrl();
       f.ping.mockRejectedValue(new Error('secret detail'));
-      const notReady = await fetch(`${origin}/api/v1/health/ready`);
+      const notReady = await getHealth(`${origin}/api/v1/health/ready`);
       expect(notReady.status).toBe(503);
-      expect(notReady.headers.get('cache-control')).toBe('no-store');
-      expect(await notReady.json()).toMatchObject({ success: false, error: { code: 'ERR_NOT_READY', details: [{ field: 'redis', message: 'error' }] } });
-      expect((await fetch(`${origin}/api/v1/health/live`)).status).toBe(200);
+      expect(notReady.headers['cache-control']).toBe('no-store');
+      expect(notReady.body).toMatchObject({ success: false, error: { code: 'ERR_NOT_READY', details: [{ field: 'redis', message: 'error' }] } });
+      expect((await getHealth(`${origin}/api/v1/health/live`)).status).toBe(200);
       f.ping.mockResolvedValue('PONG');
-      const ready = await fetch(`${origin}/api/v1/health/ready`);
+      const ready = await getHealth(`${origin}/api/v1/health/ready`);
       expect(ready.status).toBe(200);
-      expect(await ready.json()).toMatchObject({ success: true, data: { status: 'ok' } });
+      expect(ready.body).toMatchObject({ success: true, data: { status: 'ok' } });
     } finally { await app.close(); }
   });
 

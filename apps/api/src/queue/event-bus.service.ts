@@ -35,7 +35,7 @@ export class EventBusService {
       { entityId } satisfies DomainEventPayload,
       // jobIdOf, not a template string: BullMQ rejects ':' in a custom id, and
       // this one threw on every publish. Same dedupe key, legal characters.
-      { ...DEFAULT_JOB_OPTIONS, jobId: jobIdOf(event, entityId) },
+      { ...DEFAULT_JOB_OPTIONS, jobId: jobIdOf(event, entityId), removeOnComplete: false, removeOnFail: false },
     );
     this.logger.log(`Published ${event} (${entityId})`);
   }

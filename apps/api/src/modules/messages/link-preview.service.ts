@@ -2,6 +2,8 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { lookup } from 'dns/promises';
 import { isIP } from 'net';
 import { createHash } from 'crypto';
+import { request as httpRequest, IncomingHttpHeaders } from 'node:http';
+import { request as httpsRequest } from 'node:https';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
 import { MessagesService } from './messages.service';
@@ -135,7 +137,8 @@ export class LinkPreviewService {
    * address would otherwise pass here and connect to the private one, since
    * which address a socket picks is not ours to decide.
    */
-  private async assertPublicHost(host: string): Promise<void> {
+  private async assertPublicHost(host: string): Promise<{ address: string; family: number }> {
+    host = host.replace(/^\[|\]$/g, '');
     const literal = isIP(host);
     const addresses = literal
       ? [{ address: host, family: literal }]
@@ -143,27 +146,26 @@ export class LinkPreviewService {
 
     if (!addresses.length) throw new Error('host does not resolve');
     for (const { address } of addresses) {
-      if (this.isPrivateAddress(address)) throw new Error(`refusing private address ${address}`);
+      if (this.isPrivateAddress(address)) throw new Error('refusing non-public address');
     }
+    return addresses[0];
   }
 
   private isPrivateAddress(ip: string): boolean {
     if (isIP(ip) === 6) {
-      const v6 = ip.toLowerCase();
-      // ::1 loopback, fc00::/7 unique-local, fe80::/10 link-local, :: unspecified.
-      if (v6 === '::1' || v6 === '::') return true;
-      if (/^f[cd][0-9a-f]{2}:/.test(v6)) return true;
-      if (/^fe[89ab][0-9a-f]:/.test(v6)) return true;
-      // ::ffff:a.b.c.d — an IPv4 address wearing an IPv6 hat, and the classic
-      // way past a check that only looked at dotted quads.
-      const mapped = v6.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-      if (mapped) return this.isPrivateAddress(mapped[1]);
-      return false;
+      const v6 = new URL(`http://[${ip}]/`).hostname.slice(1, -1);
+      const [first, second] = v6.split(':').map(value => parseInt(value || '0', 16));
+      // Allow native global unicast only. Reject ALL mapped/compatible IPv4,
+      // ULA, link-local, NAT64 and tunnel forms, including hexadecimal aliases.
+      return first < 0x2000 || first > 0x3fff || first === 0x2002 || first === 0x3fff
+        || (first === 0x2001 && (second < 0x200 || second === 0xdb8));
     }
+
+    if (isIP(ip) !== 4) return true;
 
     const p = ip.split('.').map(Number);
     if (p.length !== 4 || p.some((n) => Number.isNaN(n))) return true; // unparseable: refuse
-    const [a, b] = p;
+    const [a, b, c] = p;
     return (
       a === 0 ||                                  // this network
       a === 10 ||                                 // private
@@ -173,6 +175,9 @@ export class LinkPreviewService {
       (a === 192 && b === 168) ||                 // private
       (a === 100 && b >= 64 && b <= 127) ||       // carrier-grade NAT
       (a === 192 && b === 0) ||                   // IETF protocol assignments
+      (a === 198 && (b === 18 || b === 19)) ||     // benchmarking
+      (a === 198 && b === 51 && c === 100) ||     // documentation
+      (a === 203 && b === 0 && c === 113) ||      // documentation
       a >= 224                                    // multicast and reserved
     );
   }
@@ -180,74 +185,65 @@ export class LinkPreviewService {
   /** Follows redirects by hand so every hop is checked, not just the first. */
   private async fetchPreview(start: URL): Promise<LinkPreview | null> {
     let url = start;
-
-    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-      await this.assertPublicHost(url.hostname);
-
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-      let res: Response;
-      try {
-        res = await fetch(url.href, {
-          redirect: 'manual',
-          signal:   controller.signal,
-          headers: {
-            // Honest about what we are. A site that would rather not be
-            // unfurled can say so, and we would rather be blockable than
-            // pretend to be a browser.
-            'user-agent': 'EziHubbLinkPreview/1.0 (+https://ezihubb.com)',
-            accept:       'text/html,application/xhtml+xml',
-          },
-        });
-      } finally {
-        clearTimeout(timer);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    try {
+      for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+        const address = await this.resolveWithinDeadline(url.hostname, controller.signal);
+        const res = await this.requestPinned(url, address, controller.signal);
+        if (res.status >= 300 && res.status < 400) {
+          const location = res.headers.location;
+          if (!location) return null;
+          url = this.parseUrl(new URL(location, url).href);
+          continue;
+        }
+        if (res.status < 200 || res.status >= 300 || !res.headers['content-type']?.includes('text/html')) return null;
+        return this.parseMeta(res.html, url);
       }
-
-      if (res.status >= 300 && res.status < 400) {
-        const location = res.headers.get('location');
-        if (!location) return null;
-        url = this.parseUrl(new URL(location, url).href);
-        continue;
-      }
-      if (!res.ok) return null;
-
-      const type = res.headers.get('content-type') ?? '';
-      if (!type.includes('text/html')) return null;
-
-      const html = await this.readCapped(res);
-      return this.parseMeta(html, url);
-    }
-
-    return null; // too many hops
+      return null;
+    } finally { clearTimeout(timer); controller.abort(); }
   }
 
-  /**
-   * Reads at most MAX_BYTES and drops the connection.
-   *
-   * `res.text()` would buffer whatever the server sends, and content-length is
-   * a claim by the same server we are defending against — so the cap has to be
-   * enforced on what actually arrives.
-   */
-  private async readCapped(res: Response): Promise<string> {
-    const reader = res.body?.getReader();
-    if (!reader) return '';
+  private async resolveWithinDeadline(host: string, signal: AbortSignal) {
+    signal.throwIfAborted();
+    return new Promise<{ address: string; family: number }>((resolve, reject) => {
+      const abort = () => reject(new Error('Link preview deadline exceeded'));
+      signal.addEventListener('abort', abort, { once: true });
+      this.assertPublicHost(host).then(resolve, reject).finally(() => signal.removeEventListener('abort', abort));
+    });
+  }
 
-    const chunks: Uint8Array[] = [];
-    let total = 0;
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (!value) continue;
-        chunks.push(value);
-        total += value.length;
-        if (total >= MAX_BYTES) break;
-      }
-    } finally {
-      await reader.cancel().catch(() => undefined);
-    }
-
-    return Buffer.concat(chunks.map((c) => Buffer.from(c))).toString('utf8').slice(0, MAX_BYTES);
+  /** Connect ONLY to the checked literal IP, while preserving Host and TLS SNI.
+   * Native HTTP(S) avoids a second DNS lookup and ambient fetch/proxy dispatchers.
+   * The shared abort signal covers DNS, redirects, headers AND streamed body. */
+  private async requestPinned(url: URL, address: { address: string; family: number }, signal: AbortSignal) {
+    return new Promise<{ status: number; headers: IncomingHttpHeaders; html: string }>((resolve, reject) => {
+      const request = url.protocol === 'https:' ? httpsRequest : httpRequest;
+      const host = url.hostname.replace(/^\[|\]$/g, '');
+      const req = request({
+        protocol: url.protocol, hostname: address.address, family: address.family,
+        port: url.port || (url.protocol === 'https:' ? 443 : 80),
+        path: `${url.pathname}${url.search}`, agent: false, signal,
+        ...(url.protocol === 'https:' && !isIP(host) ? { servername: host } : {}),
+        headers: { host: url.host, 'user-agent': 'EziHubbLinkPreview/1.0 (+https://ezihubb.com)', accept: 'text/html,application/xhtml+xml' },
+      }, res => {
+        const status = res.statusCode ?? 0;
+        const finish = (html: string) => { resolve({ status, headers: res.headers, html }); res.destroy(); };
+        res.on('error', reject);
+        if (status < 200 || status >= 300 || !res.headers['content-type']?.includes('text/html')) { finish(''); return; }
+        const chunks: Buffer[] = [];
+        let total = 0;
+        res.on('data', (chunk: Buffer) => {
+          const retained = chunk.subarray(0, MAX_BYTES - total);
+          chunks.push(retained); total += retained.length;
+          if (total === MAX_BYTES) finish(Buffer.concat(chunks, total).toString('utf8'));
+        });
+        res.on('end', () => finish(Buffer.concat(chunks, total).toString('utf8')));
+        res.on('aborted', () => reject(new Error('Link preview response interrupted')));
+      });
+      req.on('error', reject);
+      req.end();
+    });
   }
 
   /** Open Graph first, then Twitter, then the plain document. */

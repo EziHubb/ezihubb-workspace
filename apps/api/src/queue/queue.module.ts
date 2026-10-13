@@ -10,6 +10,7 @@ import { ScheduledProcessor } from './scheduled.processor';
 import { QueueSchedulerService } from './queue-scheduler.service';
 import { DomainEventProcessor } from './domain-event.processor';
 import { EventBusService } from './event-bus.service';
+import { OrderEventOutboxService } from './order-event-outbox.service';
 import { DevBullModule } from './dev-bull.module';
 import { FulfillmentModule } from '../modules/fulfillment/fulfillment.module';
 import { AnalyticsModule } from '../modules/analytics/analytics.module';
@@ -55,10 +56,10 @@ const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
         )]),
   ],
   providers: disableQueue
-    ? []
-    : [EmailProcessor, ImageProcessor, OrderProcessor, AbandonedCartProcessor, FulfillmentProcessor, ScheduledProcessor, QueueSchedulerService, DomainEventProcessor, EventBusService],
+    ? [EventBusService, OrderEventOutboxService]
+    : [EmailProcessor, ImageProcessor, OrderProcessor, AbandonedCartProcessor, FulfillmentProcessor, ScheduledProcessor, QueueSchedulerService, DomainEventProcessor, EventBusService, OrderEventOutboxService],
   // EventBusService is exported so any module can publish without importing
   // a queue or knowing a single subscriber.
-  exports: disableQueue ? [DevBullModule, EventBusService] : [BullModule, EventBusService],
+  exports: disableQueue ? [DevBullModule, EventBusService, OrderEventOutboxService] : [BullModule, EventBusService, OrderEventOutboxService],
 })
 export class QueueModule {}

@@ -81,7 +81,7 @@ export class DomainEventProcessor extends WorkerHost {
       await queue.add(
         sub.job,
         { orderId: entityId },
-        { ...DEFAULT_JOB_OPTIONS, jobId: subscriberJobId(event, sub.job, entityId) },
+        { ...DEFAULT_JOB_OPTIONS, jobId: subscriberJobId(event, sub.job, entityId), removeOnComplete: false, removeOnFail: false },
       );
     }
 

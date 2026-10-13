@@ -15,7 +15,7 @@ import { OrderProgressStepKind, OrderStatus } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TrackingService } from './tracking.service';
-import { NotificationsService } from '../notifications/notifications.service';
+import { OrderEventOutboxService, recordOrderEvent } from '../../queue/order-event-outbox.service';
 import { ensureFixedOrderProgressSteps } from '../orders/order-progress.defaults';
 import { syncOrderStatusFromShops } from '../orders/order-status-sync';
 import { assertEconomicShopFulfillmentAllowed } from '../finances/economic-fulfillment-guard';
@@ -32,7 +32,7 @@ export class TrackingWebhookController {
   constructor(
     private readonly trackingService: TrackingService,
     private readonly prisma: PrismaService,
-    private readonly notificationsService: NotificationsService,
+    private readonly orderOutbox: OrderEventOutboxService,
     private readonly config: ConfigService,
   ) {
     this.webhookSecret = config.get<string>('EASYPOST_WEBHOOK_SECRET', '');
@@ -99,11 +99,16 @@ export class TrackingWebhookController {
     const order = matches[0];
 
     if (order.adminArchivedAt || !RECEIVABLE_PARENT_STATES.includes(order.status)) {
+      // A duplicate delivered callback can retry an existing DB intent, but
+      // cannot authorize another transition or create historical mail intents.
+      if (!order.adminArchivedAt && (order.status === OrderStatus.DELIVERED || order.status === OrderStatus.COMPLETED)) {
+        this.orderOutbox.kick();
+      }
       return { received: true };
     }
 
     const now = new Date();
-    const becameDelivered = await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
       // Same lock ordering as economic cancellation/refund/fulfillment paths.
       const context = await tx.economicOrderContext.findUnique({ where: { orderId: order.id } });
       if (context) await tx.$queryRaw`SELECT "id" FROM "EconomicOrderContext" WHERE "id" = ${context.id} FOR UPDATE`;
@@ -159,17 +164,11 @@ export class TrackingWebhookController {
       });
       // For legacy rows the transition above already claimed delivery. Shop
       // replay/concurrent requests can only claim the parent notification once.
+      if (!shops.length || delivered.count === 1) await recordOrderEvent(tx, 'ORDER_DELIVERED', order.id);
       return shops.length ? delivered.count === 1 : true;
     }, { isolationLevel: 'Serializable' });
 
-    const email = order.guestEmail ?? order.user?.email;
-    if (becameDelivered && email) {
-      await this.notificationsService.sendOrderDelivered({
-        email, orderNumber: order.orderNumber, orderId: order.id,
-        firstName: order.user?.firstName ?? undefined,
-        items: order.items.map(i => ({ productName: i.productName, productSlug: '' })),
-      });
-    }
+    this.orderOutbox.kick();
 
     return { received: true };
   }

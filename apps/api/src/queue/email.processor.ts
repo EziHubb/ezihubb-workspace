@@ -56,14 +56,14 @@ export class EmailProcessor extends WorkerHost {
       if (recipient && !recipient[preference]) return;
     }
 
-    this.logger.log(`Sending email: template="${template}" to="${to}" subject="${subject}"`);
+    this.logger.log(`Sending email: id=${job.id} template="${template}"`);
 
     const html = this.renderTemplate(template, data);
     const from = `"${this.config.get<string>('email.fromName') ?? 'EziHubb'}" <${this.config.get<string>('email.from')}>`;
 
     await this.transporter.sendMail({ from, to, subject, html });
 
-    this.logger.log(`Email sent: template="${template}" to="${to}"`);
+    this.logger.log(`Email sent: id=${job.id} template="${template}"`);
   }
 
   private renderTemplate(templateName: string, data: Record<string, unknown>): string {
@@ -103,9 +103,9 @@ export class EmailProcessor extends WorkerHost {
   }
 
   @OnWorkerEvent('failed')
-  onFailed(job: Job, error: Error): void {
+  onFailed(job: Job, _error: Error): void {
     this.logger.error(
-      `Email job failed: id=${job.id} name=${job.name} attempt=${job.attemptsMade} — ${error.message}`,
+      `Email job failed: id=${job.id} name=${job.name} attempt=${job.attemptsMade}`,
     );
   }
 }

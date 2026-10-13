@@ -25,8 +25,6 @@ import {
   SendEmailJobData,
   DEFAULT_JOB_OPTIONS,
 } from '../../queue/queue.constants';
-import { EventBusService } from '../../queue/event-bus.service';
-import { DOMAIN_EVENTS } from '../../queue/domain-events';
 import {
   CreatePaymentIntentDto,
   PaymentIntentResponseDto,
@@ -39,6 +37,7 @@ import {
 import { CommissionService } from '../affiliates/commission.service';
 import { EconomicPaymentsService } from './economic-payments.service';
 import { EconomicWebhookRetryException } from './economic-webhook-retry.exception';
+import { OrderEventOutboxService, recordOrderEvent } from '../../queue/order-event-outbox.service';
 
 const WEBHOOK_IDEMPOTENCY_TTL = 24 * 60 * 60; // 24 hours in seconds
 const REFUND_WINDOW_DAYS = 60;
@@ -54,8 +53,8 @@ export class PaymentsService {
     private readonly config: ConfigService,
     private readonly commissionService: CommissionService,
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
-    private readonly eventBus: EventBusService,
     private readonly economicPayments: EconomicPaymentsService,
+    private readonly orderOutbox: OrderEventOutboxService,
   ) {
     const secretKey = config.get<string>('STRIPE_SECRET_KEY') ?? '';
     this.stripe = new Stripe(secretKey, {
@@ -87,14 +86,18 @@ export class PaymentsService {
         message: 'Order not found',
       });
 
-    if (order.status !== OrderStatus.PENDING_PAYMENT) {
+    if (order.status !== OrderStatus.PENDING_PAYMENT || order.adminArchivedAt) {
       throw new BadRequestException({
         code: 'ERR_ORDER_INVALID_STATE',
         message: 'Order is not awaiting payment',
       });
     }
 
-    let stripeAmount = Number(order.total);
+    // Old apply calls may have already spent a card without booking payment
+    // credit. Never charge the full order again or silently rewrite history.
+    await this.assertNoUnreconciledGiftCardUsage(orderId);
+
+    let stripeAmount = Math.round(Number(order.total) * 100) / 100;
     let giftCardApplied = 0;
 
     if (giftCardCode) {
@@ -107,7 +110,7 @@ export class PaymentsService {
           code: 'ERR_GIFT_CARD_INVALID',
           message: 'Invalid or inactive gift card',
         });
-      if (giftCard.expiresAt && giftCard.expiresAt < new Date()) {
+      if (giftCard.expiresAt && giftCard.expiresAt <= new Date()) {
         throw new BadRequestException({
           code: 'ERR_GIFT_CARD_EXPIRED',
           message: 'Gift card has expired',
@@ -120,15 +123,15 @@ export class PaymentsService {
         });
       }
 
-      giftCardApplied = Math.min(Number(giftCard.balance), stripeAmount);
-      stripeAmount = Math.max(0, stripeAmount - giftCardApplied);
+      const appliedMinor = Math.min(Math.round(Number(giftCard.balance) * 100), Math.round(stripeAmount * 100));
+      giftCardApplied = appliedMinor / 100;
+      stripeAmount = Math.max(0, Math.round(stripeAmount * 100) - appliedMinor) / 100;
     }
 
     const currency = 'usd';
 
     // If gift card covers 100%, no Stripe charge needed
-    if (stripeAmount < 0.5 && giftCardCode) {
-      // Stripe minimum is $0.50; treat as fully covered by gift card
+    if (stripeAmount === 0 && giftCardCode) {
       // Create a gift-card-only payment record and confirm order
       await this.fulfilWithGiftCard(
         orderId,
@@ -137,6 +140,10 @@ export class PaymentsService {
         Number(order.total),
       );
       return { clientSecret: '', amount: 0, currency };
+    }
+
+    if (stripeAmount < 0.5) {
+      throw new BadRequestException({ code: 'ERR_PAYMENT_MINIMUM', message: 'Remaining Stripe amount must be at least $0.50' });
     }
 
     // Create Stripe PaymentIntent — server never sees raw card data (PCI compliant)
@@ -238,11 +245,24 @@ export class PaymentsService {
       return;
     }
 
-    if (payment.status === PaymentStatus.PAID) return; // Already processed
+    if (payment.status === PaymentStatus.PAID) {
+      // Only drain existing prospective intents; never recreate/replay history.
+      this.orderOutbox.kick();
+      return;
+    }
 
     const now = new Date();
 
     await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${payment.orderId} FOR UPDATE`;
+      const current = await tx.payment.findUniqueOrThrow({ where: { id: payment.id }, include: { order: true } });
+      if (current.status === PaymentStatus.PAID) return;
+      if (current.stripePaymentIntentId !== intent.id) {
+        throw new ConflictException('Payment requires reconciliation; payment intent binding changed');
+      }
+      if (current.status !== PaymentStatus.PENDING || current.order.status !== OrderStatus.PENDING_PAYMENT || current.order.adminArchivedAt) {
+        throw new ConflictException('Payment requires reconciliation; order is no longer awaiting payment');
+      }
       // Confirm payment
       await tx.payment.update({
         where: { id: payment.id },
@@ -254,11 +274,11 @@ export class PaymentsService {
       });
 
       // Apply gift card if used
-      if (payment.giftCardCode && payment.giftCardAmount) {
+      if (current.giftCardCode && current.giftCardAmount) {
         await this.deductGiftCard(
           tx,
-          payment.giftCardCode,
-          Number(payment.giftCardAmount),
+          current.giftCardCode,
+          Number(current.giftCardAmount),
           payment.orderId,
         );
       }
@@ -292,6 +312,7 @@ export class PaymentsService {
           where: { cart: { userId: payment.order.userId } },
         });
       }
+      await recordOrderEvent(tx, 'ORDER_PAID', payment.orderId);
     });
 
     // ── Publish, and stop knowing who cares ────────────────────────────────
@@ -305,10 +326,9 @@ export class PaymentsService {
     // Now one event goes out and the routing table in domain-events.ts decides
     // the rest. Adding a consumer no longer touches this file.
     //
-    // Awaited, not fire-and-forget: if the event cannot be queued we want the
-    // webhook to fail so Stripe redelivers it. Swallowing that would put us
-    // back where we started, with side effects silently not happening.
-    await this.eventBus.publish(DOMAIN_EVENTS.ORDER_PAID, payment.orderId);
+    // Best-effort immediate handoff. The same-transaction DB outbox survives
+    // process/Redis failures even if the provider never redelivers this event.
+    this.orderOutbox.kick();
   }
 
 
@@ -558,7 +578,7 @@ export class PaymentsService {
     );
 
     this.logger.log(
-      `Gift card purchased: code=${giftCard.code} amount=${dto.amount} recipient=${dto.recipientEmail}`,
+      `Gift card purchased: id=${giftCard.id}`,
     );
 
     return {
@@ -617,12 +637,14 @@ export class PaymentsService {
         code: 'ERR_NOT_FOUND',
         message: 'Order not found',
       });
-    if (order.status !== OrderStatus.PENDING_PAYMENT) {
+    if (order.status !== OrderStatus.PENDING_PAYMENT || order.adminArchivedAt) {
       throw new BadRequestException({
         code: 'ERR_ORDER_INVALID_STATE',
         message: 'Order is not awaiting payment',
       });
     }
+
+    await this.assertNoUnreconciledGiftCardUsage(orderId);
 
     const card = await this.prisma.giftCard.findFirst({
       where: { code, isActive: true },
@@ -632,6 +654,13 @@ export class PaymentsService {
         code: 'ERR_GIFT_CARD_INVALID',
         message: 'Gift card not found or inactive',
       });
+
+    if (card.expiresAt && card.expiresAt <= new Date()) {
+      throw new BadRequestException({ code: 'ERR_GIFT_CARD_EXPIRED', message: 'Gift card has expired' });
+    }
+    if (Number(card.balance) <= 0) {
+      throw new BadRequestException({ code: 'ERR_GIFT_CARD_NO_BALANCE', message: 'Gift card has no remaining balance' });
+    }
 
     const orderTotal = Number(order.total);
     const cardBalance = Number(card.balance);
@@ -647,10 +676,8 @@ export class PaymentsService {
       };
     }
 
-    // Partial payment — deduct available balance; caller still needs a PaymentIntent
-    await this.prisma.$transaction(async (tx) => {
-      await this.deductGiftCard(tx, code, appliedAmount, orderId);
-    });
+    // Partial coverage is a QUOTE, not a debit. create-intent(giftCardCode)
+    // freezes the split and the verified payment transaction debits it once.
     return {
       appliedAmount,
       remainingOrderTotal: orderTotal - appliedAmount,
@@ -742,6 +769,13 @@ export class PaymentsService {
     const confirmedStatus = order.isDigital ? OrderStatus.COMPLETED : OrderStatus.CONFIRMED;
 
     await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`;
+      const current = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
+      const bound = await tx.payment.findUnique({ where: { orderId }, select: { id: true } });
+      if (current.status !== OrderStatus.PENDING_PAYMENT || current.adminArchivedAt || bound) {
+        throw new ConflictException('Order is no longer awaiting an unbound gift-card payment');
+      }
+      await this.assertNoUnreconciledGiftCardUsage(orderId, tx);
       await this.deductGiftCard(tx, giftCardCode, giftCardAmount, orderId);
       await tx.payment.create({
         data: {
@@ -766,6 +800,7 @@ export class PaymentsService {
           note: 'Paid in full with gift card',
         },
       });
+      await recordOrderEvent(tx, 'ORDER_PAID', orderId);
     });
 
     // Third publisher of the same event, and it had the third different list
@@ -779,7 +814,7 @@ export class PaymentsService {
     // an order-confirmed mail, and never reached analytics. Same shape as the
     // PayPal gap, in a third place — which is what listing consumers by hand
     // costs once there is more than one way to pay.
-    await this.eventBus.publish(DOMAIN_EVENTS.ORDER_PAID, orderId);
+    this.orderOutbox.kick();
   }
 
   private async deductGiftCard(
@@ -790,7 +825,7 @@ export class PaymentsService {
   ): Promise<void> {
     // Atomic deduction — balance cannot go negative
     const result = await tx.giftCard.updateMany({
-      where: { code, balance: { gte: amount } },
+      where: { code, isActive: true, balance: { gte: amount }, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
       data: { balance: { decrement: amount } },
     });
 
@@ -809,6 +844,12 @@ export class PaymentsService {
     await tx.giftCardUsage.create({
       data: { giftCardId: card.id, orderId, amount },
     });
+  }
+
+  private async assertNoUnreconciledGiftCardUsage(orderId: string, db: Pick<Prisma.TransactionClient, 'giftCardUsage'> = this.prisma) {
+    if (await db.giftCardUsage.count({ where: { orderId } })) {
+      throw new ConflictException({ code: 'ERR_GIFT_CARD_RECONCILIATION', message: 'Existing gift card usage requires reconciliation before another payment' });
+    }
   }
 
   private async getUserEmail(userId: string | null): Promise<string | null> {
@@ -863,6 +904,7 @@ export class PaymentsService {
         where: { providerEventId: eventId },
       });
       if (existing) {
+        this.orderOutbox.kick();
         this.logger.debug(`PayPal event ${eventId} already processed — skipping`);
         return;
       }
@@ -908,10 +950,16 @@ export class PaymentsService {
         }
 
         // Already captured + idempotency event saved — true duplicate
-        if (payment.status === PaymentStatus.PAID && payment.providerEventId) break;
+        if (payment.status === PaymentStatus.PAID && payment.providerEventId) { this.orderOutbox.kick(); break; }
 
         const now = new Date();
         await this.prisma.$transaction(async (tx) => {
+          await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${payment.orderId} FOR UPDATE`;
+          const current = await tx.payment.findUniqueOrThrow({ where: { id: payment.id }, include: { order: true } });
+          if (current.status === PaymentStatus.PAID) return;
+          if (current.status !== PaymentStatus.PENDING || current.order.status !== OrderStatus.PENDING_PAYMENT || current.order.adminArchivedAt) {
+            throw new ConflictException('PayPal payment requires reconciliation; order is no longer awaiting payment');
+          }
           await tx.payment.update({
             where: { id: payment.id },
             data: {
@@ -932,6 +980,7 @@ export class PaymentsService {
               data: { orderId: payment.orderId, status: confirmedStatus, note: 'PayPal payment captured' },
             });
           }
+          await recordOrderEvent(tx, 'ORDER_PAID', payment.orderId);
         });
 
         // Same event as the Stripe path, so PayPal orders get the same six
@@ -946,7 +995,7 @@ export class PaymentsService {
         // That gap is the whole argument for publishing rather than listing
         // consumers: two publishers of one event drifted into two different
         // sets of side effects, and nothing failed loudly enough to notice.
-        await this.eventBus.publish(DOMAIN_EVENTS.ORDER_PAID, payment.orderId);
+        this.orderOutbox.kick();
 
         this.logger.log(`PayPal CAPTURE.COMPLETED: order ${payment.orderId} CONFIRMED`);
         break;

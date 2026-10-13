@@ -1,4 +1,7 @@
 {
+  "heading": "个性化礼物",
+  "headingForQuery": "{query}的搜索结果",
+  "sortResults": "排序搜索结果",
   "filters": "筛选",
   "clearAll": "清除全部",
   "specialOffers": "特别优惠",

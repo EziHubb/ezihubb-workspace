@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
 import { Request } from 'express';
 import { PaymentsService } from './payments.service';
 import { PaypalService } from './paypal.service';
@@ -42,6 +42,11 @@ class PaypalCreateOrderDto {
 class PaypalCaptureDto {
   @IsString() @IsNotEmpty()
   paypalOrderId: string;
+}
+
+class ApplyGiftCardDto {
+  @IsString() @IsNotEmpty() @MaxLength(150)
+  orderId: string;
 }
 
 @ApiTags('Payments')
@@ -115,13 +120,16 @@ export class PaymentsController {
   }
 
   @Post('gift-cards/:code/apply')
+  @UseGuards(OptionalAuthGuard)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Apply a gift card to an order. Fully pays if balance covers total; otherwise deducts partial amount.' })
+  @ApiOperation({ summary: 'Pay in full with a gift card, or quote partial coverage without deducting it. Pass giftCardCode to create-intent to confirm partial coverage.' })
   async applyGiftCard(
     @Param('code') code: string,
-    @Body('orderId') orderId: string,
+    @Body() dto: ApplyGiftCardDto,
+    @CurrentUser() user?: JwtPayload,
   ) {
-    return this.paymentsService.applyGiftCard(code, orderId);
+    await this.orderPayer.assertMayPayForOrder(dto.orderId, user?.sub);
+    return this.paymentsService.applyGiftCard(code, dto.orderId);
   }
 
   // ─── Admin ─────────────────────────────────────────────────────────────────

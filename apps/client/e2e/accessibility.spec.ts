@@ -32,6 +32,31 @@ test.describe('storefront accessibility', () => {
     await expectNoSeriousAccessibilityViolations(page);
   });
 
+  for (const labels of [
+    { locale: 'en', heading: 'Search results for keepsake', sort: 'Sort results', filters: 'Filters', showFilters: 'Show filters', min: 'Min price', max: 'Max price' },
+    { locale: 'vi', heading: 'Kết quả tìm kiếm cho keepsake', sort: 'Sắp xếp kết quả', filters: 'Bộ lọc', showFilters: 'Hiện bộ lọc', min: 'Giá từ', max: 'Giá đến' },
+    { locale: 'zh', heading: 'keepsake的搜索结果', sort: '排序搜索结果', filters: '筛选', showFilters: '显示筛选', min: '最低价', max: '最高价' },
+  ]) {
+    test(`search heading and price controls are named in ${labels.locale}`, async ({ page }) => {
+      await page.route('https://api.ezihubb.test/**', route => route.fulfill({ json: {
+        success: true,
+        data: new URL(route.request().url()).pathname.endsWith('/search') ? {
+          data: [], pagination: { page: 1, limit: 24, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+          facets: {}, appliedFilters: {}, correctedQuery: null,
+        } : [],
+        meta: {},
+      } }));
+      await page.goto(`/${labels.locale}/search?q=keepsake`);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(labels.heading);
+      await expect(page.getByRole('combobox', { name: labels.sort, exact: true })).toBeVisible();
+      await page.getByRole('button', { name: labels.filters, exact: true })
+        .or(page.getByRole('button', { name: labels.showFilters, exact: true })).click();
+      await expect(page.getByRole('spinbutton', { name: labels.min, exact: true })).toBeVisible();
+      await expect(page.getByRole('spinbutton', { name: labels.max, exact: true })).toBeVisible();
+    });
+  }
+
   test('non-essential trackers are absent before cookie consent', async ({ page }) => {
     await page.addInitScript(() => window.localStorage.removeItem('cookie_consent'));
     await page.goto('/en');
