@@ -5,12 +5,24 @@ import { EconomicQuote, exactMinor, quoteFingerprint } from './economic-quote';
 export type EconomicScope = { kind: EconomicBeneficiaryKind; beneficiaryId: string; currency: string; provenance: EconomicProvenance };
 type Database = Pick<PrismaClient, '$transaction'>;
 
+/** Prisma PG adapter reports ORM conflicts as P2034, but raw lock conflicts as
+ * P2010 with structured driver metadata. Never infer retryability from text or
+ * treat an arbitrary raw SQL failure (constraints, timeouts, connectivity) as a conflict. */
+export function isEconomicTransactionConflict(error: unknown): boolean {
+  if (!error || typeof error !== 'object' || !('code' in error)) return false;
+  if (error.code === 'P2034') return true;
+  if (error.code !== 'P2010' || !('meta' in error) || !error.meta || typeof error.meta !== 'object') return false;
+  const meta = error.meta as { code?: unknown; driverAdapterError?: { cause?: { kind?: unknown } } };
+  return meta.driverAdapterError?.cause?.kind === 'TransactionWriteConflict'
+    || meta.code === '40001' || meta.code === '40P01';
+}
+
 /** Only retries DB-only transactions. Never put provider calls inside this callback. */
 export async function economicTransaction<T>(db: Database, work: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
   for (let attempt = 0; ; attempt++) {
     try { return await db.$transaction(work, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }); }
     catch (error) {
-      if (attempt >= 2 || !(error && typeof error === 'object' && 'code' in error && error.code === 'P2034')) throw error;
+      if (attempt >= 2 || !isEconomicTransactionConflict(error)) throw error;
     }
   }
 }
@@ -42,7 +54,12 @@ export async function seedCapturedBalanceLots(tx: Prisma.TransactionClient, capt
 }
 
 async function accountForScope(tx: Prisma.TransactionClient, scope: EconomicScope, lock = false) {
-  const account = await tx.economicBalanceAccount.findUnique({ where: { kind_beneficiaryId_currency_provenance: scope } });
+  // Callers may supply a full account row (structurally an EconomicScope).
+  // Prisma compound unique inputs reject any additional runtime properties.
+  const { kind, beneficiaryId, currency, provenance } = scope;
+  const account = await tx.economicBalanceAccount.findUnique({ where: {
+    kind_beneficiaryId_currency_provenance: { kind, beneficiaryId, currency, provenance },
+  } });
   if (account && lock) await tx.$queryRaw`SELECT "id" FROM "EconomicBalanceAccount" WHERE "id" = ${account.id} FOR UPDATE`;
   return account;
 }

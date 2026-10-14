@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { Prisma, PrismaClient } from '@prisma/client';
+import { isEconomicTransactionConflict } from '../../apps/api/src/modules/finances/economic-balance';
 
 /** Both transactions must be open on distinct PostgreSQL backends BEFORE work.
  * Only first attempts rendezvous; production SERIALIZABLE retries remain intact.
@@ -51,7 +52,7 @@ export function expectSuccesses(results: PromiseSettledResult<unknown>[], count:
   for (const result of results) if (result.status === 'rejected') {
     // Serialization conflicts can be surfaced by non-retrying production paths.
     const error = result.reason as { code?: string; message?: string };
-    assert(error.code === 'P2034' || (expectedFailure && expectedFailure.test(error.message ?? '')),
+    assert(isEconomicTransactionConflict(error) || (expectedFailure && expectedFailure.test(error.message ?? '')),
       'unexpected database/business failure must not count as a valid race loser');
   }
 }

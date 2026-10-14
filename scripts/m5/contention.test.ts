@@ -78,8 +78,17 @@ test('one-backend fake concurrency is rejected by the coordinator', async () => 
 });
 test('unexpected driver/logic failures never count as expected business race losers', () => {
   expectSuccesses([{ status: 'fulfilled', value: 1 }, { status: 'rejected', reason: { code: 'P2034' } }], 1);
+  expectSuccesses([{ status: 'fulfilled', value: 1 }, { status: 'rejected', reason: {
+    code: 'P2010', meta: { driverAdapterError: { cause: { kind: 'TransactionWriteConflict' } } },
+  } }], 1);
   expectSuccesses([{ status: 'rejected', reason: new Error('Insufficient inventory') }], 0, /Insufficient inventory/);
   assert.throws(() => expectSuccesses([{ status: 'rejected', reason: new Error('ECONNREFUSED') }], 0, /Insufficient inventory/));
+  for (const reason of [{ code: 'P2010' }, { code: 'P2010', meta: { code: '23505' } },
+    new Error('TransactionWriteConflict 40001')]) {
+    assert.throws(() => expectSuccesses([{ status: 'rejected', reason }], 0, /Insufficient inventory/));
+  }
+  assert.throws(() => expectSuccesses([{ status: 'rejected', reason: { code: 'P2034' } }], 1),
+    'a known conflict cannot satisfy a required successful winner');
 });
 
 // Fixture shape validation only: not SQL, not native Prisma, not concurrency.

@@ -105,6 +105,15 @@ test('failure diagnostics export only allowlisted driver codes, never raw errors
   assert.deepEqual(safeFailureDetails({ name: 'PRIVATE', message: 'PRIVATE' }), {});
 });
 
+test('contention child diagnostics are re-allowlisted when retained by the parent', () => {
+  const child = { ...safeFailureDetails({ code: 'P2010', name: 'PrismaClientKnownRequestError', message: 'PRIVATE' }),
+    message: 'PRIVATE', meta: { secret: 'PRIVATE' }, driverStage: 'PRIVATE' };
+  assert.deepEqual(safeFailureDetails({ code: child.driverCode, name: child.driverType }), {
+    driverCode: 'P2010', driverType: 'PrismaClientKnownRequestError',
+  });
+  assert.deepEqual(safeFailureDetails({ code: 'PRIVATE_URL', name: 'PRIVATE_SECRET' }), {});
+});
+
 test('generated environment has private independent secrets and round-trips without interpolation', () => {
   const env = generateEnvironment(), other = generateEnvironment();
   assertEnvironment(env);

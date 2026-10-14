@@ -33,7 +33,11 @@ function harness() {
   };
   const tx = {
     $queryRaw: jest.fn().mockResolvedValue([]),
-    economicBalanceAccount: { findUnique: jest.fn(async () => account) },
+    economicBalanceAccount: { findUnique: jest.fn(async ({ where }) => {
+      // Prisma validates compound inputs strictly; a full account row is not a selector.
+      expect(Object.keys(where.kind_beneficiaryId_currency_provenance).sort()).toEqual(Object.keys(scope).sort());
+      return account;
+    }) },
     economicBalanceLot: { findMany: jest.fn(async () => lots), update: jest.fn(async args => updateLot(args)),
       updateMany: jest.fn(async args => { updateLot(args); return { count: 1 }; }) },
     economicPayout: {
@@ -113,6 +117,8 @@ describe('captured balance and exact payout contracts (modeled DB)', () => {
     const h = harness(); const first = await reserveEconomicPayout(h.database, request('first')); await reserveEconomicPayout(h.database, request('second', '200'));
     await expect(rejectEconomicPayout(h.database, first.id, 'operator', 'reason', { ...scope, beneficiaryId: 'foreign' })).rejects.toThrow('does not belong');
     await rejectEconomicPayout(h.database, first.id, 'operator', 'reason', scope);
+    expect(h.tx.economicBalanceAccount.findUnique).toHaveBeenLastCalledWith({ where: { kind_beneficiaryId_currency_provenance: scope } });
+    expect(h.tx.$queryRaw).toHaveBeenCalledWith(expect.any(Array), h.account.id);
     expect(h.lots[0].reservedMinor).toBe(200n);
     await expect(rejectEconomicPayout(h.database, first.id, 'operator', 'reason', scope)).rejects.toThrow('terminal');
   });
@@ -145,6 +151,32 @@ describe('captured balance and exact payout contracts (modeled DB)', () => {
     db.$transaction.mockRejectedValue({ code: 'P2034' });
     await expect(economicTransaction(db as never, jest.fn())).rejects.toEqual({ code: 'P2034' });
     expect(db.$transaction).toHaveBeenCalledTimes(5);
+  });
+  it.each([
+    { code: 'P2010', meta: { driverAdapterError: { cause: { kind: 'TransactionWriteConflict' } } } },
+    { code: 'P2010', meta: { code: '40001' } },
+    { code: 'P2010', meta: { code: '40P01' } },
+  ])('retries structured raw SQL conflicts within the same three-attempt bound: %j', async error => {
+    const work = jest.fn(), db = { $transaction: jest.fn().mockRejectedValueOnce(error).mockResolvedValueOnce('ok') };
+    expect(await economicTransaction(db as never, work)).toBe('ok');
+    expect(db.$transaction).toHaveBeenCalledTimes(2);
+    expect(db.$transaction).toHaveBeenLastCalledWith(work, { isolationLevel: 'Serializable' });
+    db.$transaction.mockClear().mockRejectedValue(error);
+    await expect(economicTransaction(db as never, work)).rejects.toBe(error);
+    expect(db.$transaction).toHaveBeenCalledTimes(3);
+  });
+  it.each([
+    null,
+    new Error('40001 TransactionWriteConflict'),
+    { code: 'P2010' },
+    { code: 'P2010', meta: { code: '23505' } },
+    { code: 'P2010', meta: { code: '55P03' } },
+    { code: 'P2010', meta: { driverAdapterError: { cause: { kind: 'UniqueConstraintViolation' } } } },
+    { code: 'P2002', meta: { driverAdapterError: { cause: { kind: 'TransactionWriteConflict' } } } },
+  ])('does not retry other errors or match error text: %j', async error => {
+    const db = { $transaction: jest.fn().mockRejectedValue(error) };
+    await expect(economicTransaction(db as never, jest.fn())).rejects.toBe(error);
+    expect(db.$transaction).toHaveBeenCalledTimes(1);
   });
 });
 

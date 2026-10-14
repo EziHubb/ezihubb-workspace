@@ -183,7 +183,8 @@ async function contentionVerification(env, manifest) {
     const result = JSON.parse(output);
     const names = require('./scenario-contract.json');
     if (result.outcome === 'FAIL' && names.includes(result.failedCase)) {
-      step('native-scenario', 'FAIL', { name: result.failedCase });
+      step('native-scenario', 'FAIL', { name: result.failedCase,
+        ...safeFailureDetails({ code: result.driverCode, name: result.driverType }) });
       step('remaining-native-scenarios', 'NOT_RUN');
       throw new Error('M5_CONTENTION_CASE_FAILED');
     }

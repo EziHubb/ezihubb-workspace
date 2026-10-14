@@ -4,7 +4,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { SCENARIOS, runScenario, CaseEvidence } from './contention-cases';
 const { assertRuntime, assertEnvironment, generateEnvironment, cleanChildEnvironment, assertDatabaseIdentity,
-  SCENARIO_DATABASE, migrationManifest } = require('./guard.cjs');
+  SCENARIO_DATABASE, migrationManifest, safeFailureDetails } = require('./guard.cjs');
 const { sourceChecksums, assertFoundationEvidence } = require('./evidence.cjs');
 const { readFileSync } = require('node:fs');
 
@@ -33,9 +33,10 @@ async function main() {
     if (marker?.version !== 'm5-scenarios-owner-v1') throw new Error('M5_SCENARIO_OWNERSHIP');
     for (const name of SCENARIOS) {
       try { cases.push(await runScenario(name, clients, runId)); }
-      catch {
-        // Deliberately no raw exception/PII. Parent records the named failure.
-        console.log(JSON.stringify({ version: 'm5.2-cases-v1', outcome: 'FAIL', runId, foundationId, failedCase: name }));
+      catch (error) {
+        // Only allowlisted driver identifiers, never messages, SQL, args or PII.
+        console.log(JSON.stringify({ version: 'm5.2-cases-v1', outcome: 'FAIL', runId, foundationId,
+          failedCase: name, ...safeFailureDetails(error) }));
         return;
       }
     }
