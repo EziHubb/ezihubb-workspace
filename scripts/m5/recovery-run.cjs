@@ -87,7 +87,7 @@ async function main() {
     if (result.outcome !== 'PASS') {
       if (require('./recovery-contract.json').includes(result.failedCase)) report.steps.push({ name: result.failedCase, outcome: 'FAIL',
         ...recoveryFailureDetails({ code: result.driverCode, name: result.driverType, message: result.failureCode,
-          snapshotDifferences: result.snapshotDifferences }, result.failedStage) });
+          snapshotDifferences: result.snapshotDifferences, constraintDifferences: result.constraintDifferences }, result.failedStage) });
       throw new Error('M5_RECOVERY_CASE_FAILED');
     }
     assertRecoveryEvidence(result, report.runId, foundationId, contentionId);

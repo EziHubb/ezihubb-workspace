@@ -126,6 +126,10 @@ test('recovery diagnostics retain fixed stages and driver identifiers only, incl
   assert.deepEqual(mismatch.snapshotDifferences, ['tables', 'schema']);
   assert.deepEqual(recoveryFailureDetails({ message: mismatch.failureCode,
     snapshotDifferences: mismatch.snapshotDifferences }, mismatch.failedStage), mismatch);
+  assert.deepEqual(recoveryFailureDetails({ message: 'M5_RESTORE_SNAPSHOT_MISMATCH', constraintDifferences: [
+    { table: 'Order', name: 'Order_pkey', change: 'DEFINITION', sql: 'PRIVATE' },
+    { table: 'PRIVATE_URL/secret', name: 'Order_pkey', change: 'MISSING' },
+  ] }, 'RESTORE_COMPARE').constraintDifferences, [{ table: 'Order', name: 'Order_pkey', change: 'DEFINITION' }]);
 });
 
 test('fixed eight-case contract maps to actual native execution, not a skipped drill', () => {

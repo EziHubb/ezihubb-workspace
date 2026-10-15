@@ -23,6 +23,12 @@ function recoveryFailureDetails(error, stage) {
     details.snapshotDifferences = ['tables', 'sequences', 'schema', 'constraints', 'triggers', 'functions', 'indexes', 'enums', 'views']
       .filter(name => error.snapshotDifferences.includes(name));
   }
+  if (error?.message === 'M5_RESTORE_SNAPSHOT_MISMATCH' && Array.isArray(error.constraintDifferences)) {
+    details.constraintDifferences = error.constraintDifferences.slice(0, 32).filter(row =>
+      /^[A-Za-z0-9_]{1,63}$/.test(row?.table ?? '') && /^[A-Za-z0-9_]{1,63}$/.test(row?.name ?? '')
+      && ['MISSING', 'ADDED', 'DEFINITION'].includes(row?.change))
+      .map(({ table, name, change }) => ({ table, name, change }));
+  }
   return details;
 }
 function runIdentity(value) {
@@ -92,6 +98,17 @@ function assertSnapshotEqual(expected, actual) {
     error.snapshotDifferences = ['tables', 'sequences'].filter(name => JSON.stringify(expected[name]) !== JSON.stringify(actual[name]));
     for (const name of ['schema', 'constraints', 'triggers', 'functions', 'indexes', 'enums', 'views']) {
       if (expected.schemaParts?.[name] !== actual.schemaParts?.[name]) error.snapshotDifferences.push(name);
+    }
+    const key = row => JSON.stringify([row.table, row.name]);
+    const left = new Map((expected.constraintHashes ?? []).map(row => [key(row), row]));
+    const right = new Map((actual.constraintHashes ?? []).map(row => [key(row), row]));
+    error.constraintDifferences = [];
+    for (const [id, row] of left) {
+      if (!right.has(id) || right.get(id).hash !== row.hash) error.constraintDifferences.push({
+        table: row.table, name: row.name, change: right.has(id) ? 'DEFINITION' : 'MISSING' });
+    }
+    for (const [id, row] of right) {
+      if (!left.has(id)) error.constraintDifferences.push({ table: row.table, name: row.name, change: 'ADDED' });
     }
     throw error;
   }
