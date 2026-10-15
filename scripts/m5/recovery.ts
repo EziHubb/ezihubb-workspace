@@ -13,12 +13,13 @@ import { verifyAndBookEconomicCapture } from '../../apps/api/src/modules/finance
 import { consumeVerifiedEconomics } from '../../apps/api/src/modules/finances/economic-consumers';
 import { executeExternalEffect, externalEffectHash } from '../../apps/api/src/modules/finances/economic-external-effect';
 import { reserveEconomicInventory } from '../../apps/api/src/modules/products/inventory-reservation';
+import { EconomicQuote, exactMinor, quoteFingerprint } from '../../apps/api/src/modules/finances/economic-quote';
 import { Catalog, ScenarioOrder, createCatalog, createProduct, createOrder, captureReader } from './contention-fixtures';
 import { killAtBarrier, eventually, KillProof } from './recovery-process';
 import { backupAndRestore } from './recovery-restore';
 import { nativeReadiness } from './recovery-readiness';
 import names from './recovery-contract.json';
-const { ROOT, dockerContext, ownedContainers, redisAction, runIdentity } = require('./recovery-support.cjs');
+const { ROOT, dockerContext, ownedContainers, redisAction, runIdentity, recoveryFailureDetails } = require('./recovery-support.cjs');
 const { assertRuntime, generateEnvironment, assertEnvironment, cleanChildEnvironment, assertDatabaseIdentity, DATABASES, SCENARIO_DATABASE, migrationManifest } = require('./guard.cjs');
 const { sourceChecksums, assertFoundationEvidence, assertCompletedContentionReport } = require('./evidence.cjs');
 const { verifyFixtureReceipt } = require('./fixtures.cjs');
@@ -33,6 +34,28 @@ export function scopedEventClient(db: PrismaClient, id: string) {
     const value = Reflect.get(target, key); return typeof value === 'function' ? value.bind(target) : value;
   } });
 }
+export async function assertCapturedBalanceLots(db: PrismaClient, captureId: string, quote: EconomicQuote) {
+  quoteFingerprint(quote);
+  const actual = await db.economicBalanceLot.findMany({ where: { captureId }, select: {
+    sourceKey: true, amountMinor: true,
+    account: { select: { kind: true, beneficiaryId: true, currency: true, provenance: true, minorExponent: true } },
+  } });
+  // The independent oracle checks exact beneficiaries and amounts, not just a
+  // count. Zero seller-net parts do not create lots; positive affiliate funds do.
+  const expected: typeof actual = quote.parts.filter(part => exactMinor(part.sellerNetMinor) > 0n).map(part => ({
+    sourceKey: part.key, amountMinor: exactMinor(part.sellerNetMinor), account: {
+      kind: 'SELLER', beneficiaryId: part.storeId, currency: quote.currency, provenance: 'TEST', minorExponent: quote.minorExponent,
+    },
+  }));
+  if (quote.affiliate && exactMinor(quote.affiliate.commissionMinor) > 0n) expected.push({
+    sourceKey: 'affiliate-pending', amountMinor: exactMinor(quote.affiliate.commissionMinor), account: {
+      kind: 'AFFILIATE', beneficiaryId: quote.affiliate.id, currency: quote.currency, provenance: 'TEST', minorExponent: quote.minorExponent,
+    },
+  });
+  const key = (row: typeof actual[number]) => JSON.stringify([row.account.kind, row.account.beneficiaryId, row.sourceKey]);
+  const compare = (left: typeof actual[number], right: typeof actual[number]) => key(left) < key(right) ? -1 : key(left) > key(right) ? 1 : 0;
+  assert.deepEqual(actual.sort(compare), expected.sort(compare));
+}
 async function seedIntent(db: PrismaClient, catalog: Catalog, runId: string, name: string) {
   const product = await createProduct(db, catalog, { name, quantity: 20 });
   const order = await createOrder(db, catalog, [{ ...product, quantity: 2 }], { shipping: true, wrap: true, affiliate: true });
@@ -44,6 +67,7 @@ async function seedIntent(db: PrismaClient, catalog: Catalog, runId: string, nam
 async function seedPaid(db: PrismaClient, catalog: Catalog, runId: string, name: string) {
   const order = await seedIntent(db, catalog, runId, name);
   const capture = await verifyAndBookEconomicCapture(db, order.operation.id, captureReader(order));
+  await assertCapturedBalanceLots(db, capture.id, order.quote);
   const event = await db.economicOutbox.findUniqueOrThrow({ where: { eventKey: `capture:${capture.id}` } });
   return { ...order, event };
 }
@@ -75,7 +99,7 @@ async function main() {
     options: '-c statement_timeout=60000 -c lock_timeout=10000' });
   const db = new PrismaClient({ adapter: new PrismaPg(pool), log: [] });
   const cases: Array<{ name: string; outcome: string; assertions: string; durationMs: number } & Partial<KillProof>> = [];
-  let failedCase = names[0], redisStopped = false;
+  let failedCase = names[0], failedStage = 'PRECHECK', redisStopped = false;
   Logger.overrideLogger(false); // Scope: this standalone harness only; no secret-bearing driver logs.
   try {
     await assertDatabaseIdentity(pool, env, SCENARIO_DATABASE);
@@ -97,31 +121,39 @@ async function main() {
     if (owner?.version !== 'm5-scenarios-owner-v1') throw new Error('M5_SCENARIO_OWNERSHIP');
     // Parent owns the exclusive advisory lock THROUGH independent cleanup.
     assert.equal(await db.economicOrderContext.count({ where: { provenance: { not: 'TEST' } } }), 0);
+    failedStage = 'CATALOG';
     const catalog = await createCatalog(db, runId, 'recovery');
     const childEnv = { ...cleanChildEnvironment(env, SCENARIO_DATABASE), TSX_TSCONFIG_PATH: resolve(ROOT, 'scripts/m5/recovery-runtime.tsconfig.json') };
     let replayEventId = '';
     for (const phase of ['capture-before-commit', 'capture-after-commit'] as const) {
       failedCase = names[cases.length]; const started = performance.now();
+      failedStage = 'SEED';
       const order = await seedIntent(db, catalog, runId, phase);
+      failedStage = 'KILL_BARRIER';
       const proof = await killAtBarrier(childEnv, runId, phase, order.operation.id);
       await eventually(async () => (await pool.query('SELECT count(*)::int AS count FROM pg_stat_activity WHERE pid=$1', [proof.backendPid])).rows[0].count, value => value === 0);
+      failedStage = 'COMMIT_STATE';
       const committed = phase === 'capture-after-commit';
       assert.equal(await db.economicCapture.count({ where: { contextId: order.context.id } }), committed ? 1 : 0);
       assert.equal(await db.economicJournalEntry.count({ where: { capture: { contextId: order.context.id } } }) > 0, committed);
       assert.equal(await db.economicOutbox.count({ where: { contextId: order.context.id } }), committed ? 1 : 0);
       assert.equal((await db.payment.findUniqueOrThrow({ where: { id: order.payment.id } })).status, committed ? 'PAID' : 'PENDING');
       assert.equal((await db.economicOperation.findUniqueOrThrow({ where: { id: order.operation.id } })).state, committed ? 'SUCCEEDED' : 'DISPATCHED');
+      failedStage = 'CAPTURE_REPLAY';
       const capture = await verifyAndBookEconomicCapture(db, order.operation.id, captureReader(order));
       assert.equal((await verifyAndBookEconomicCapture(db, order.operation.id, captureReader(order))).id, capture.id);
       assert.equal(await db.economicCapture.count({ where: { contextId: order.context.id } }), 1);
       assert.equal((await db.economicJournalEntry.aggregate({ where: { captureId: capture.id }, _sum: { amountMinor: true } }))._sum.amountMinor, 0n);
-      assert.equal(await db.economicBalanceLot.count({ where: { captureId: capture.id } }), order.quote.parts.length);
+      failedStage = 'BALANCE_LOTS';
+      await assertCapturedBalanceLots(db, capture.id, order.quote);
       assert.equal(await db.economicOutbox.count({ where: { contextId: order.context.id } }), 1);
       const event = await db.economicOutbox.findUniqueOrThrow({ where: { eventKey: `capture:${capture.id}` } });
+      failedStage = 'LIFECYCLE';
       await consumeVerifiedEconomics(db, event, 'TEST'); await assertLifecycle(db, order, order.product.id, event.id, true);
       await db.economicOutbox.update({ where: { id: event.id }, data: { availableAt: new Date('9999-01-01T00:00:00Z') } });
       cases.push({ name: failedCase, outcome: 'PASS', assertions: 'NATIVE_EFFECTS_AND_RECOVERY', durationMs: performance.now() - started, ...proof });
     }
+    failedStage = 'RECOVERY_CASE';
     for (const phase of ['before-commit', 'after-commit', 'lease-claimed'] as const) {
       failedCase = names[cases.length]; const started = performance.now();
       const order = await seedPaid(db, catalog, runId, phase);
@@ -231,8 +263,9 @@ async function main() {
       [`m5-recovery-run:${runId}`, JSON.stringify({ outcome: 'PASS', caseCount: cases.length, restoreDatabase: restore.database })]);
     console.log(JSON.stringify({ version: 'm5.4-cases-v1', runId, foundationId, contentionId, outcome: 'PASS',
       scope: 'LOCAL_SYNTHETIC_RECOVERY_ONLY', fullStack: false, providerOperations: false, cases, restore }));
-  } catch {
-    console.log(JSON.stringify({ version: 'm5.4-cases-v1', outcome: 'FAIL', failedCase }));
+  } catch (error) {
+    console.log(JSON.stringify({ version: 'm5.4-cases-v1', outcome: 'FAIL', failedCase,
+      ...recoveryFailureDetails(error, failedStage) }));
   } finally {
     if (redisStopped) redisAction(context, env, containers.redis, 'start');
     await db.$disconnect(); await pool.end();

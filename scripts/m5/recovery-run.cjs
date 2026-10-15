@@ -4,7 +4,7 @@ const { resolve } = require('node:path');
 const { spawn } = require('node:child_process');
 const { PROJECT, assertRuntime, assertEnvironment, parseEnv, cleanChildEnvironment, assertDatabaseIdentity, SCENARIO_DATABASE, migrationManifest } = require('./guard.cjs');
 const { sourceChecksums, findFoundationEvidence, findContentionEvidence } = require('./evidence.cjs');
-const { ROOT, command, dockerContext, ownedContainers, inspectOwned, redisAction, assertRecoveryEvidence } = require('./recovery-support.cjs');
+const { ROOT, command, dockerContext, ownedContainers, inspectOwned, redisAction, assertRecoveryEvidence, recoveryFailureDetails } = require('./recovery-support.cjs');
 const { withOwnedLoopbackRelays } = require('./loopback-relay.cjs');
 const report = { version: 'm5.4-v1', runId: randomBytes(12).toString('hex'), startedAt: new Date().toISOString(),
   scope: 'LOCAL_SYNTHETIC_RECOVERY_ONLY', steps: [], productionActivated: false, providerOperations: false,
@@ -85,7 +85,8 @@ async function main() {
       }
     }
     if (result.outcome !== 'PASS') {
-      if (require('./recovery-contract.json').includes(result.failedCase)) report.steps.push({ name: result.failedCase, outcome: 'FAIL' });
+      if (require('./recovery-contract.json').includes(result.failedCase)) report.steps.push({ name: result.failedCase, outcome: 'FAIL',
+        ...recoveryFailureDetails({ code: result.driverCode, name: result.driverType }, result.failedStage) });
       throw new Error('M5_RECOVERY_CASE_FAILED');
     }
     assertRecoveryEvidence(result, report.runId, foundationId, contentionId);

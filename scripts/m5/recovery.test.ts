@@ -5,17 +5,119 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { assertHandshake, killAcknowledgedChild, eventually, PHASES } from './recovery-process';
 import { databaseSnapshot } from './recovery-restore';
-import { scopedEventClient } from './recovery';
+import { scopedEventClient, assertCapturedBalanceLots } from './recovery';
+import { EconomicScope, seedCapturedBalanceLots } from '../../apps/api/src/modules/finances/economic-balance';
+import { buildEconomicQuote, QuoteInput } from '../../apps/api/src/modules/finances/economic-quote';
 import { readinessGateway } from './recovery-readiness';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { Pool } from 'pg';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import names from './recovery-contract.json';
-const { restoreDatabase, assertRecoveryContainer, assertSnapshotEqual, measureRestore, assertRecoveryEvidence, MAX_BACKUP_BYTES, archiveCreatesPublicSchema } = require('./recovery-support.cjs');
+const { restoreDatabase, assertRecoveryContainer, assertSnapshotEqual, measureRestore, assertRecoveryEvidence, MAX_BACKUP_BYTES, archiveCreatesPublicSchema, recoveryFailureDetails } = require('./recovery-support.cjs');
 const { PROJECT, IMAGES, PORTS } = require('./guard.cjs');
 const runId = 'a'.repeat(24), foundationId = 'b'.repeat(24), contentionId = 'c'.repeat(24);
 const expected = { runId, nonce: 'd'.repeat(48), phase: 'before-commit' as const, pid: 100, resourceId: 'Ab0123456789' };
 const message = { ...expected, kind: 'm5-recovery-barrier-v1', backendPid: 200 };
+
+function captureQuote(commission: string | null = '50', zeroSeller = false) {
+  const input: QuoteInput = { orderId: 'synthetic-order', currency: 'USD', minorExponent: 2,
+    stores: [{ storeId: 'synthetic-store', storeOrderId: 'synthetic-shop', lines: [{ id: 'synthetic-line',
+      productId: 'synthetic-product', variantId: null, quantity: 2, unitPriceMinor: '1000',
+      sellerDiscountMinor: '0', platformDiscountMinor: '0' }], customerShippingMinor: '500',
+    expectedShippingSubsidyMinor: '0', giftWrapMinor: '300',
+    fees: [{ code: 'TRANSACTION_FEE', amountMinor: '101', ruleReference: 'synthetic' }] }],
+    affiliate: commission === null ? null : { id: 'synthetic-affiliate', commissionMinor: commission,
+      rate: '0.01', lockDays: 1, ruleReference: 'synthetic' }, tax: { amountMinor: '0', ruleReference: 'synthetic' } };
+  if (zeroSeller) input.stores.push({ storeId: 'zero-store', storeOrderId: 'zero-shop', lines: [{
+    id: 'zero-line', productId: 'zero-product', variantId: null, quantity: 1, unitPriceMinor: '0',
+    sellerDiscountMinor: '0', platformDiscountMinor: '0' }], customerShippingMinor: '0',
+  expectedShippingSubsidyMinor: '0', giftWrapMinor: '0', fees: [] });
+  return buildEconomicQuote(input);
+}
+
+// Query model only, NOT native PostgreSQL or crash/rollback acceptance. Invoke
+// the production lot seeder so the regression covers its real affiliate policy.
+async function capturedLots(commission: string | null = '50', zeroSeller = false) {
+  type Account = EconomicScope & { id: string; minorExponent: number };
+  type Lot = { captureId: string; sourceKey: string; amountMinor: bigint; account: Account };
+  const quote = captureQuote(commission, zeroSeller), captureId = 'synthetic-capture';
+  const accounts: Account[] = [], lots: Lot[] = [];
+  const tx = {
+    economicBalanceAccount: {
+      createMany: async ({ data }: { data: Array<EconomicScope & { minorExponent: number }> }) => {
+        for (const row of data) accounts.push({ ...row, id: `account-${accounts.length}` });
+      },
+      findUniqueOrThrow: async ({ where }: { where: { kind_beneficiaryId_currency_provenance: EconomicScope } }) => {
+        const scope = where.kind_beneficiaryId_currency_provenance;
+        const account = accounts.find(row => row.kind === scope.kind && row.beneficiaryId === scope.beneficiaryId);
+        assert(account); return account;
+      },
+    },
+    economicBalanceLot: { create: async ({ data }: { data: { accountId: string; captureId: string; sourceKey: string; amountMinor: bigint } }) => {
+      const account = accounts.find(row => row.id === data.accountId); assert(account);
+      lots.push({ captureId: data.captureId, sourceKey: data.sourceKey, amountMinor: data.amountMinor, account: { ...account } });
+    } },
+  };
+  await seedCapturedBalanceLots(tx as unknown as Prisma.TransactionClient, captureId, quote, 'TEST', new Date('2026-10-15T00:00:00Z'));
+  const selected = (input: { where: { captureId: string } }) => {
+    assert.deepEqual(input.where, { captureId }); return lots.filter(row => row.captureId === captureId);
+  };
+  const db = { economicBalanceLot: { count: async (input: { where: { captureId: string } }) => selected(input).length,
+    findMany: async (input: { where: { captureId: string }; select: unknown }) => {
+      assert.deepEqual(input.select, { sourceKey: true, amountMinor: true,
+        account: { select: { kind: true, beneficiaryId: true, currency: true, provenance: true, minorExponent: true } } });
+      return selected(input).map(row => ({ sourceKey: row.sourceKey, amountMinor: row.amountMinor, account: {
+        kind: row.account.kind, beneficiaryId: row.account.beneficiaryId, currency: row.account.currency,
+        provenance: row.account.provenance, minorExponent: row.account.minorExponent,
+      } }));
+    } } } as unknown as PrismaClient;
+  return { quote, captureId, lots, db };
+}
+
+test('capture replay verifies seller AND affiliate lots, not just quote part count (UNIT query model)', async () => {
+  const h = await capturedLots();
+  assert.equal(h.quote.parts.length, 3); assert.equal(h.lots.length, 4);
+  await assertCapturedBalanceLots(h.db, h.captureId, h.quote);
+  // SQL row ordering is not financial identity.
+  h.lots.reverse(); await assertCapturedBalanceLots(h.db, h.captureId, h.quote);
+});
+
+test('capture lot contract excludes zero seller net and zero/absent affiliate commissions (UNIT query model)', async () => {
+  for (const commission of [null, '0', '50']) {
+    const h = await capturedLots(commission, true);
+    assert.equal(h.lots.some(row => row.account.beneficiaryId === 'zero-store'), false);
+    assert.equal(h.lots.filter(row => row.account.kind === 'AFFILIATE').length, commission === '50' ? 1 : 0);
+    await assertCapturedBalanceLots(h.db, h.captureId, h.quote);
+  }
+});
+
+test('capture lot contract rejects missing/duplicate/mis-scoped or changed amounts (UNIT query model)', async () => {
+  const mutations: Array<(rows: Awaited<ReturnType<typeof capturedLots>>['lots']) => void> = [
+    rows => { rows.splice(rows.findIndex(row => row.account.kind === 'AFFILIATE'), 1); },
+    rows => { rows.push(structuredClone(rows[0])); },
+    rows => { rows[0].account.beneficiaryId = 'foreign'; },
+    rows => { rows[0].account.kind = 'AFFILIATE'; },
+    rows => { rows[0].account.currency = 'EUR'; },
+    rows => { rows[0].account.provenance = 'LIVE'; },
+    rows => { rows[0].account.minorExponent = 0; },
+    rows => { rows[0].sourceKey = 'foreign-source'; },
+    rows => { rows[0].amountMinor += 1n; },
+    rows => { rows[0].captureId = 'foreign-capture'; },
+  ];
+  for (const mutate of mutations) {
+    const h = await capturedLots(); mutate(h.lots);
+    await assert.rejects(assertCapturedBalanceLots(h.db, h.captureId, h.quote));
+  }
+});
+
+test('recovery diagnostics retain fixed stages and driver identifiers only, including parent revalidation', () => {
+  const error = { code: 'P2010', name: 'PrismaClientKnownRequestError', message: 'PRIVATE',
+    actual: 'PRIVATE', expected: 'PRIVATE', meta: { sql: 'PRIVATE' }, stack: 'PRIVATE' };
+  const details = recoveryFailureDetails(error, 'BALANCE_LOTS');
+  assert.deepEqual(details, { driverCode: 'P2010', driverType: 'PrismaClientKnownRequestError', failedStage: 'BALANCE_LOTS' });
+  assert.deepEqual(recoveryFailureDetails({ code: details.driverCode, name: details.driverType }, details.failedStage), details);
+  assert.deepEqual(recoveryFailureDetails({ code: 'PRIVATE_SECRET', name: 'PRIVATE' }, 'PRIVATE_URL'), {});
+});
 
 test('fixed eight-case contract maps to actual native execution, not a skipped drill', () => {
   assert.equal(names.length, 8); assert.equal(new Set(names).size, 8);

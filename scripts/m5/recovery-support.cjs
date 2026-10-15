@@ -2,10 +2,18 @@ const assert = require('node:assert/strict');
 const { createHash } = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 const { resolve } = require('node:path');
-const { PROJECT, IMAGES, PORTS, cleanChildEnvironment, assertDockerEndpoint, assertComposeConfig, assertOwnedContainers } = require('./guard.cjs');
+const { PROJECT, IMAGES, PORTS, cleanChildEnvironment, assertDockerEndpoint, assertComposeConfig, assertOwnedContainers, safeFailureDetails } = require('./guard.cjs');
 
 const ROOT = resolve(__dirname, '../..');
 const MAX_BACKUP_BYTES = 128 * 1024 * 1024;
+function recoveryFailureDetails(error, stage) {
+  const details = safeFailureDetails(error);
+  // Fixed harness stages only; no assertion values, messages, SQL or secrets.
+  if (['PRECHECK', 'CATALOG', 'SEED', 'KILL_BARRIER', 'COMMIT_STATE', 'CAPTURE_REPLAY', 'BALANCE_LOTS', 'LIFECYCLE', 'RECOVERY_CASE'].includes(stage)) {
+    details.failedStage = stage;
+  }
+  return details;
+}
 function runIdentity(value) {
   if (!/^[a-f0-9]{24}$/.test(value ?? '')) throw new Error('M5_RECOVERY_IDENTITY');
   return value;
@@ -104,6 +112,6 @@ function assertRecoveryEvidence(result, runId, foundationId, contentionId) {
   assert.deepEqual(metrics, measureRestore({ ...metrics, rtoMs: metrics.restoreAndReconcileRtoMs }));
   return result;
 }
-module.exports = { ROOT, MAX_BACKUP_BYTES, runIdentity, restoreDatabase, command, dockerContext, ownedContainers,
+module.exports = { ROOT, MAX_BACKUP_BYTES, recoveryFailureDetails, runIdentity, restoreDatabase, command, dockerContext, ownedContainers,
   assertRecoveryContainer, inspectOwned, redisAction, snapshotHash, assertSnapshotEqual, measureRestore, assertRecoveryEvidence };
 module.exports.archiveCreatesPublicSchema = archiveCreatesPublicSchema;
