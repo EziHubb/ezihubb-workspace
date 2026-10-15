@@ -44,7 +44,9 @@ export async function databaseSnapshot(client: Pool | PoolClient) {
     if (!/^[A-Za-z0-9_]+$/.test(sequencename)) throw new Error('M5_RESTORE_RELATION');
     sequences.push({ name: sequencename, state: (await client.query(`SELECT last_value::text,is_called FROM public."${sequencename}"`)).rows[0] });
   }
-  return { tables, schemaHash: snapshotHash({ schema, constraints, triggers, functions, indexes, enums, views }), sequences };
+  const schemaParts = { schema, constraints, triggers, functions, indexes, enums, views };
+  return { tables, schemaHash: snapshotHash(schemaParts), sequences,
+    schemaParts: Object.fromEntries(Object.entries(schemaParts).map(([name, rows]) => [name, snapshotHash(rows)])) };
 }
 export async function backupAndRestore(input: { env: Record<string, string>; context: string; postgresId: string;
   runId: string; sourcePool: Pool; sourceDb: PrismaClient; catalog: Catalog; replayEventId: string;

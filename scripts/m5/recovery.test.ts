@@ -121,6 +121,11 @@ test('recovery diagnostics retain fixed stages and driver identifiers only, incl
   assert.deepEqual(restore, { failedStage: 'RESTORE_COMPARE', failureCode: 'M5_RESTORE_SNAPSHOT_MISMATCH' });
   assert.deepEqual(recoveryFailureDetails({ message: restore.failureCode }, restore.failedStage), restore);
   assert.deepEqual(recoveryFailureDetails({ message: 'M5_RESTORE_PRIVATE_SECRET' }, 'PRIVATE_URL'), {});
+  const mismatch = recoveryFailureDetails({ message: 'M5_RESTORE_SNAPSHOT_MISMATCH',
+    snapshotDifferences: ['tables', 'schema', 'PRIVATE_SQL'] }, 'RESTORE_COMPARE');
+  assert.deepEqual(mismatch.snapshotDifferences, ['tables', 'schema']);
+  assert.deepEqual(recoveryFailureDetails({ message: mismatch.failureCode,
+    snapshotDifferences: mismatch.snapshotDifferences }, mismatch.failedStage), mismatch);
 });
 
 test('fixed eight-case contract maps to actual native execution, not a skipped drill', () => {
@@ -185,6 +190,14 @@ test('snapshot equality rejects even one money/inventory/receipt/schema differen
     { ...snapshot, tables: [{ ...snapshot.tables[0], count: 1 }] }, { ...snapshot, tables: [{ ...snapshot.tables[0], sha256: 'd'.repeat(64) }] }]) {
     assert.throws(() => assertSnapshotEqual(snapshot, changed), /M5_RESTORE_SNAPSHOT_MISMATCH/);
   }
+});
+
+test('snapshot diagnostics identify changed fixed sections without exposing rows or SQL', () => {
+  const snapshot = { tables: [], sequences: [], schemaHash: 'a', schemaParts: { schema: 'a', indexes: 'b' } };
+  assert.throws(() => assertSnapshotEqual(snapshot, { ...snapshot, schemaHash: 'c', schemaParts: { ...snapshot.schemaParts, indexes: 'c' } }),
+    (error: Error & { snapshotDifferences?: string[] }) => {
+      assert.deepEqual(error.snapshotDifferences, ['indexes']); return true;
+    });
 });
 test('restore preserves a fresh template public namespace only when the native archive creates one', () => {
   const heading = '; Archive created at 2026-10-08\n';

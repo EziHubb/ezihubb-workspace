@@ -19,6 +19,10 @@ function recoveryFailureDetails(error, stage) {
     'M5_RESTORE_TARGET_IDENTITY', 'M5_RESTORE_SNAPSHOT_MISMATCH', 'M5_RECOVERY_DOCKER_COMMAND', 'M5_RECOVERY_MEASUREMENT'].includes(error?.message)) {
     details.failureCode = error.message;
   }
+  if (error?.message === 'M5_RESTORE_SNAPSHOT_MISMATCH' && Array.isArray(error.snapshotDifferences)) {
+    details.snapshotDifferences = ['tables', 'sequences', 'schema', 'constraints', 'triggers', 'functions', 'indexes', 'enums', 'views']
+      .filter(name => error.snapshotDifferences.includes(name));
+  }
   return details;
 }
 function runIdentity(value) {
@@ -83,7 +87,14 @@ function archiveCreatesPublicSchema(listing) {
   return listing.split(/\r?\n/).some(line => /^\d+; \d+ \d+ SCHEMA - public [A-Za-z0-9_]+$/.test(line.trim()));
 }
 function assertSnapshotEqual(expected, actual) {
-  if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error('M5_RESTORE_SNAPSHOT_MISMATCH');
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    const error = new Error('M5_RESTORE_SNAPSHOT_MISMATCH');
+    error.snapshotDifferences = ['tables', 'sequences'].filter(name => JSON.stringify(expected[name]) !== JSON.stringify(actual[name]));
+    for (const name of ['schema', 'constraints', 'triggers', 'functions', 'indexes', 'enums', 'views']) {
+      if (expected.schemaParts?.[name] !== actual.schemaParts?.[name]) error.snapshotDifferences.push(name);
+    }
+    throw error;
+  }
 }
 function measureRestore({ snapshotAt, lastAcknowledgedAt, missingAcknowledgements, rtoMs }) {
   const point = Date.parse(snapshotAt), last = Date.parse(lastAcknowledgedAt);
