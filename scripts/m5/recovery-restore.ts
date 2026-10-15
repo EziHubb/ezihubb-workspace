@@ -11,7 +11,38 @@ import { Catalog, createProduct } from './contention-fixtures';
 const { ROOT, MAX_BACKUP_BYTES, command, inspectOwned, restoreDatabase, snapshotHash, assertSnapshotEqual, measureRestore, archiveCreatesPublicSchema } = require('./recovery-support.cjs');
 const { assertEnvironment, assertDatabaseIdentity, SCENARIO_DATABASE, cleanChildEnvironment } = require('./guard.cjs');
 
-export async function databaseSnapshot(client: Pool | PoolClient) {
+type Constraint = { relname: string; conname: string; contype: string; definition: string };
+
+// pg_get_constraintdef is not text-idempotent: reparsing can flatten nested
+// ANDs and distribute array coercions. Let PostgreSQL parse BOTH snapshots in
+// empty temporary tables; never strip casts, predicates or parentheses by regex.
+// Use a separate session because the exported snapshot is READ ONLY. The entire
+// scratch transaction is rolled back; no public table or constraint is changed.
+export async function canonicalConstraints(rows: Constraint[], pool: Pool): Promise<Constraint[]> {
+  if (!rows.some(row => row.contype === 'c')) return rows;
+  const session = await pool.connect();
+  try {
+    await session.query('BEGIN');
+    const result: Constraint[] = [];
+    for (const [index, row] of rows.entries()) {
+      if (row.contype !== 'c') { result.push(row); continue; }
+      if (!/^[A-Za-z0-9_]{1,63}$/.test(row.relname) || row.definition.length > 64 * 1024
+        || !row.definition.startsWith('CHECK (')) throw new Error('M5_RESTORE_CONSTRAINT');
+      const table = `m5_constraint_probe_${index}`;
+      await session.query(`CREATE TEMP TABLE "${table}" (LIKE public."${row.relname}")`);
+      await session.query(`ALTER TABLE pg_temp."${table}" ADD CONSTRAINT m5_canonical ${row.definition}`);
+      const canonical = (await session.query(`SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
+        WHERE conrelid=to_regclass($1) AND conname='m5_canonical'`, [`pg_temp."${table}"`])).rows;
+      if (canonical.length !== 1 || typeof canonical[0].definition !== 'string') throw new Error('M5_RESTORE_CONSTRAINT');
+      result.push({ ...row, definition: canonical[0].definition });
+    }
+    return result;
+  } finally {
+    try { await session.query('ROLLBACK'); } finally { session.release(); }
+  }
+}
+
+export async function databaseSnapshot(client: Pool | PoolClient, canonicalPool?: Pool) {
   const names: string[] = (await client.query("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename COLLATE \"C\"")).rows.map(row => row.tablename);
   const tables: Array<{ name: string; count: number; sha256: string }> = [];
   for (const name of names) {
@@ -24,9 +55,11 @@ export async function databaseSnapshot(client: Pool | PoolClient) {
   }
   const schema = (await client.query(`SELECT table_name,column_name,data_type,udt_name,is_nullable,column_default,ordinal_position
     FROM information_schema.columns WHERE table_schema='public' ORDER BY table_name COLLATE "C",ordinal_position`)).rows;
-  const constraints = (await client.query(`SELECT t.relname,c.conname,pg_get_constraintdef(c.oid) AS definition FROM pg_constraint c
+  const rawConstraints: Constraint[] = (await client.query(`SELECT t.relname,c.conname,c.contype,pg_get_constraintdef(c.oid) AS definition FROM pg_constraint c
     JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace
     WHERE n.nspname='public' ORDER BY t.relname COLLATE "C",c.conname COLLATE "C"`)).rows;
+  if (!canonicalPool) throw new Error('M5_RESTORE_CONSTRAINT');
+  const constraints = await canonicalConstraints(rawConstraints, canonicalPool);
   const triggers = (await client.query(`SELECT t.relname,g.tgname,pg_get_triggerdef(g.oid) AS definition FROM pg_trigger g
     JOIN pg_class t ON t.oid=g.tgrelid JOIN pg_namespace n ON n.oid=t.relnamespace
     WHERE n.nspname='public' AND NOT g.tgisinternal ORDER BY t.relname COLLATE "C",g.tgname COLLATE "C"`)).rows;
@@ -68,7 +101,7 @@ export async function backupAndRestore(input: { env: Record<string, string>; con
     const point = (await session.query('SELECT pg_export_snapshot() AS snapshot,clock_timestamp() AS observed_at')).rows[0];
     if (!/^[A-Fa-f0-9-]+$/.test(point.snapshot)) throw new Error('M5_RESTORE_SNAPSHOT_ID');
     snapshotAt = point.observed_at.toISOString();
-    snapshot = await databaseSnapshot(session);
+    snapshot = await databaseSnapshot(session, sourcePool);
     input.onStage?.('RESTORE_DUMP');
     backup = command(['--context', context, 'exec', postgresId, 'pg_dump', '-U', 'ezihubb_m5', '-d', SCENARIO_DATABASE,
       '--format=custom', '--schema=public', '--no-owner', '--no-privileges', `--snapshot=${point.snapshot}`], env);
@@ -84,7 +117,7 @@ export async function backupAndRestore(input: { env: Record<string, string>; con
   input.onStage?.('RESTORE_ACK');
   const later = await createProduct(sourceDb, catalog, { name: 'post-snapshot-acknowledged-write', quantity: 9 });
   const lastAcknowledgedAt = (await sourcePool.query('SELECT clock_timestamp() AS time')).rows[0].time.toISOString();
-  const sourceAfter = await databaseSnapshot(sourcePool);
+  const sourceAfter = await databaseSnapshot(sourcePool, sourcePool);
   const bootstrapUrl = new URL(cleanChildEnvironment(env, SCENARIO_DATABASE).DATABASE_URL);
   bootstrapUrl.username = 'm5_bootstrap'; bootstrapUrl.password = env['M5_BOOTSTRAP_PASSWORD'];
   const bootstrap = new Pool({ connectionString: bootstrapUrl.href, max: 1, connectionTimeoutMillis: 5000,
@@ -134,16 +167,16 @@ export async function backupAndRestore(input: { env: Record<string, string>; con
     command(['--context', context, 'exec', '-i', postgresId, 'pg_restore', '-U', 'ezihubb_m5', '-d', target,
       '--no-owner', '--no-privileges', '--exit-on-error', '--single-transaction'], env, bytes);
     input.onStage?.('RESTORE_COMPARE');
-    assertSnapshotEqual(snapshot, await databaseSnapshot(restoredPool));
+    assertSnapshotEqual(snapshot, await databaseSnapshot(restoredPool, restoredPool));
     restored = new PrismaClient({ adapter: new PrismaPg(restoredPool), log: [] });
     input.onStage?.('RESTORE_REPLAY');
     const event = await restored.economicOutbox.findUniqueOrThrow({ where: { id: replayEventId } });
     assert.equal(await consumeVerifiedEconomics(restored, event, 'TEST'), false);
-    assertSnapshotEqual(snapshot, await databaseSnapshot(restoredPool));
+    assertSnapshotEqual(snapshot, await databaseSnapshot(restoredPool, restoredPool));
     assert.equal(await restored.product.count({ where: { id: later.product.id } }), 0);
     assert.equal((await sourceDb.product.findUniqueOrThrow({ where: { id: later.product.id } })).quantity, 9);
     input.onStage?.('RESTORE_SOURCE');
-    assertSnapshotEqual(sourceAfter, await databaseSnapshot(sourcePool));
+    assertSnapshotEqual(sourceAfter, await databaseSnapshot(sourcePool, sourcePool));
     input.onStage?.('RESTORE_METRICS');
     const metrics = measureRestore({ snapshotAt, lastAcknowledgedAt, missingAcknowledgements: 1, rtoMs: performance.now() - rtoStart });
     await restoredPool.query('INSERT INTO m5_guard.fixture_receipt(name,payload) VALUES($1,$2::jsonb)',

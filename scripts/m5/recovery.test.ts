@@ -4,7 +4,8 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { assertHandshake, killAcknowledgedChild, eventually, PHASES } from './recovery-process';
-import { databaseSnapshot } from './recovery-restore';
+import { databaseSnapshot, canonicalConstraints } from './recovery-restore';
+import { PGlite } from '@electric-sql/pglite';
 import { scopedEventClient, assertCapturedBalanceLots } from './recovery';
 import { EconomicScope, seedCapturedBalanceLots } from '../../apps/api/src/modules/finances/economic-balance';
 import { buildEconomicQuote, QuoteInput } from '../../apps/api/src/modules/finances/economic-quote';
@@ -14,7 +15,7 @@ import { Pool } from 'pg';
 import { Prisma, PrismaClient } from '@prisma/client';
 import names from './recovery-contract.json';
 const { restoreDatabase, assertRecoveryContainer, assertSnapshotEqual, measureRestore, assertRecoveryEvidence, MAX_BACKUP_BYTES, archiveCreatesPublicSchema, recoveryFailureDetails } = require('./recovery-support.cjs');
-const { PROJECT, IMAGES, PORTS } = require('./guard.cjs');
+const { PROJECT, IMAGES, PORTS, migrationManifest } = require('./guard.cjs');
 const runId = 'a'.repeat(24), foundationId = 'b'.repeat(24), contentionId = 'c'.repeat(24);
 const expected = { runId, nonce: 'd'.repeat(48), phase: 'before-commit' as const, pid: 100, resourceId: 'Ab0123456789' };
 const message = { ...expected, kind: 'm5-recovery-barrier-v1', backendPid: 200 };
@@ -202,6 +203,61 @@ test('snapshot diagnostics identify changed fixed sections without exposing rows
     (error: Error & { snapshotDifferences?: string[] }) => {
       assert.deepEqual(error.snapshotDifferences, ['indexes']); return true;
     });
+});
+
+test('CHECK comparison reparses natively without weakening money bounds, casts or AND/OR groups (WASM parser model)', async () => {
+  const db = new PGlite(); await db.waitReady;
+  const pool = { connect: async () => ({ query: db.query.bind(db), release: () => undefined }) } as unknown as Pool;
+  try {
+    await db.exec(`CREATE TABLE "Probe" (amount bigint, paid bigint, kind varchar(30), owner text,
+      CONSTRAINT money CHECK ((amount >= 0 AND paid >= 0) AND paid <= amount),
+      CONSTRAINT kinds CHECK (kind IN ('ITEM','SHIPPING')),
+      CONSTRAINT owner_rule CHECK ((kind='ITEM' AND owner IS NOT NULL) OR (kind='SHIPPING' AND owner IS NULL)))`);
+    const read = async () => (await db.query<{ relname: string; conname: string; contype: string; definition: string }>(
+      `SELECT t.relname,c.conname,c.contype,pg_get_constraintdef(c.oid) AS definition FROM pg_constraint c
+       JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace
+       WHERE n.nspname='public' ORDER BY t.relname,c.conname`)).rows;
+    const source = await read(), canonical = await canonicalConstraints(source, pool);
+    assert.notDeepEqual(source, canonical); // Reproduces the textual false negative.
+    assert.deepEqual(await canonicalConstraints(canonical, pool), canonical);
+    assert.deepEqual(await read(), source); // No public schema changes.
+    assert.equal((await db.query<{ count: number }>(`SELECT count(*)::int AS count FROM pg_tables WHERE tablename LIKE 'm5_constraint_probe_%'`)).rows[0].count, 0);
+    for (const mutation of [
+      { name: 'money', definition: 'CHECK (amount >= 0 AND paid >= 0 AND paid <= amount + 1)' },
+      { name: 'money', definition: 'CHECK (amount >= 0 OR paid >= 0 OR paid <= amount)' },
+      { name: 'kinds', definition: "CHECK (kind IN ('ITEM','SHIPPING','GIFT_WRAP'))" },
+      { name: 'owner_rule', definition: "CHECK ((kind='ITEM' OR owner IS NOT NULL) OR (kind='SHIPPING' AND owner IS NULL))" },
+    ]) {
+      const changed = await canonicalConstraints(source.map(row => row.conname === mutation.name ? { ...row, definition: mutation.definition } : row), pool);
+      assert.notDeepEqual(changed, canonical);
+      assert.throws(() => assertSnapshotEqual({ schemaHash: JSON.stringify(canonical) }, { schemaHash: JSON.stringify(changed) }), /M5_RESTORE_SNAPSHOT_MISMATCH/);
+    }
+    for (const mutation of [source.slice(1), source.map(row => ({ ...row, conname: `${row.conname}_renamed` }))]) {
+      assert.notDeepEqual(await canonicalConstraints(mutation, pool), canonical);
+    }
+    await assert.rejects(canonicalConstraints([{ ...source[0], definition: 'CHECK (unknown_column > 0)' }], pool));
+    assert.deepEqual(await read(), source);
+  } finally { await db.close(); }
+});
+
+test('complete migration CHECK catalog has stable parser round-trip and unchanged source (WASM, not native restore)', async () => {
+  const db = new PGlite(); await db.waitReady;
+  const pool = { connect: async () => ({ query: db.query.bind(db), release: () => undefined }) } as unknown as Pool;
+  try {
+    for (const entry of migrationManifest(resolve(__dirname, '../..'))) {
+      await db.exec(readFileSync(resolve(__dirname, '../../prisma/migrations', entry.name, 'migration.sql'), 'utf8'));
+    }
+    const read = async () => (await db.query<{ relname: string; conname: string; contype: string; definition: string }>(
+      `SELECT t.relname,c.conname,c.contype,pg_get_constraintdef(c.oid) AS definition FROM pg_constraint c
+       JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace
+       WHERE n.nspname='public' ORDER BY t.relname,c.conname`)).rows;
+    const source = await read(), canonical = await canonicalConstraints(source, pool);
+    assert.notDeepEqual(source, canonical);
+    assert.deepEqual(await canonicalConstraints(canonical, pool), canonical);
+    assert.deepEqual(await read(), source);
+    assert.deepEqual(canonical.filter(row => row.contype !== 'c'), source.filter(row => row.contype !== 'c'));
+    assert.equal((await db.query<{ count: number }>(`SELECT count(*)::int AS count FROM pg_tables WHERE tablename LIKE 'm5_constraint_probe_%'`)).rows[0].count, 0);
+  } finally { await db.close(); }
 });
 test('restore preserves a fresh template public namespace only when the native archive creates one', () => {
   const heading = '; Archive created at 2026-10-08\n';
