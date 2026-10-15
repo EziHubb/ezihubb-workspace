@@ -257,7 +257,8 @@ async function main() {
     }
     cases.push({ name: failedCase, outcome: 'PASS', assertions: 'NATIVE_EFFECTS_AND_RECOVERY', durationMs: performance.now() - started });
     failedCase = names[cases.length]; started = performance.now();
-    const restore = await backupAndRestore({ env, context, postgresId: containers.postgres, runId, sourcePool: pool, sourceDb: db, catalog, replayEventId });
+    const restore = await backupAndRestore({ env, context, postgresId: containers.postgres, runId, sourcePool: pool, sourceDb: db,
+      catalog, replayEventId, onStage: stage => { failedStage = stage; } });
     cases.push({ name: failedCase, outcome: 'PASS', assertions: 'NATIVE_EFFECTS_AND_RECOVERY', durationMs: performance.now() - started });
     await pool.query('INSERT INTO m5_guard.fixture_receipt(name,payload) VALUES($1,$2::jsonb)',
       [`m5-recovery-run:${runId}`, JSON.stringify({ outcome: 'PASS', caseCount: cases.length, restoreDatabase: restore.database })]);

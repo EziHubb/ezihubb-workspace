@@ -47,8 +47,11 @@ export async function databaseSnapshot(client: Pool | PoolClient) {
   return { tables, schemaHash: snapshotHash({ schema, constraints, triggers, functions, indexes, enums, views }), sequences };
 }
 export async function backupAndRestore(input: { env: Record<string, string>; context: string; postgresId: string;
-  runId: string; sourcePool: Pool; sourceDb: PrismaClient; catalog: Catalog; replayEventId: string }) {
+  runId: string; sourcePool: Pool; sourceDb: PrismaClient; catalog: Catalog; replayEventId: string;
+  onStage?: (stage: 'RESTORE_SNAPSHOT' | 'RESTORE_DUMP' | 'RESTORE_ARCHIVE' | 'RESTORE_ACK' | 'RESTORE_TARGET'
+    | 'RESTORE_LOAD' | 'RESTORE_COMPARE' | 'RESTORE_REPLAY' | 'RESTORE_SOURCE' | 'RESTORE_METRICS') => void }) {
   const { env, context, postgresId, runId, sourcePool, sourceDb, catalog, replayEventId } = input;
+  input.onStage?.('RESTORE_SNAPSHOT');
   assertEnvironment(env); await assertDatabaseIdentity(sourcePool, env, SCENARIO_DATABASE);
   inspectOwned(context, env, postgresId, 'postgres');
   const target = restoreDatabase(runId);
@@ -63,6 +66,7 @@ export async function backupAndRestore(input: { env: Record<string, string>; con
     if (!/^[A-Fa-f0-9-]+$/.test(point.snapshot)) throw new Error('M5_RESTORE_SNAPSHOT_ID');
     snapshotAt = point.observed_at.toISOString();
     snapshot = await databaseSnapshot(session);
+    input.onStage?.('RESTORE_DUMP');
     backup = command(['--context', context, 'exec', postgresId, 'pg_dump', '-U', 'ezihubb_m5', '-d', SCENARIO_DATABASE,
       '--format=custom', '--schema=public', '--no-owner', '--no-privileges', `--snapshot=${point.snapshot}`], env);
     if (backup.length < 1 || backup.length > MAX_BACKUP_BYTES) throw new Error('M5_RESTORE_BACKUP_SIZE');
@@ -71,8 +75,10 @@ export async function backupAndRestore(input: { env: Record<string, string>; con
   } catch (error) { await session.query('ROLLBACK').catch(() => undefined); throw error; }
   finally { session.release(); }
   const backupSha256 = createHash('sha256').update(backup).digest('hex');
+  input.onStage?.('RESTORE_ARCHIVE');
   const createsPublic = archiveCreatesPublicSchema(command(['--context', context, 'exec', '-i', postgresId, 'pg_restore', '--list'], env, backup).toString());
   // Deliberately ACK one write AFTER the snapshot, proving measurable backup-only loss.
+  input.onStage?.('RESTORE_ACK');
   const later = await createProduct(sourceDb, catalog, { name: 'post-snapshot-acknowledged-write', quantity: 9 });
   const lastAcknowledgedAt = (await sourcePool.query('SELECT clock_timestamp() AS time')).rows[0].time.toISOString();
   const sourceAfter = await databaseSnapshot(sourcePool);
@@ -83,6 +89,7 @@ export async function backupAndRestore(input: { env: Record<string, string>; con
   let restoredPool: Pool | undefined, restored: PrismaClient | undefined, targetBootstrap: Pool | undefined;
   const rtoStart = performance.now();
   try {
+    input.onStage?.('RESTORE_TARGET');
     const authority = (await bootstrap.query("SELECT current_user AS role,current_database() AS database,(SELECT token FROM m5_guard.environment WHERE singleton) AS token")).rows[0];
     if (authority.role !== 'm5_bootstrap' || authority.database !== SCENARIO_DATABASE || authority.token !== env['M5_DATABASE_TOKEN']) throw new Error('M5_RESTORE_BOOTSTRAP_IDENTITY');
     if ((await bootstrap.query('SELECT 1 FROM pg_database WHERE datname=$1', [target])).rowCount) throw new Error('M5_RESTORE_TARGET_EXISTS');
@@ -120,16 +127,21 @@ export async function backupAndRestore(input: { env: Record<string, string>; con
     const bytes = readFileSync(file);
     if (createHash('sha256').update(bytes).digest('hex') !== backupSha256) throw new Error('M5_RESTORE_BACKUP_CHANGED');
     inspectOwned(context, env, postgresId, 'postgres');
+    input.onStage?.('RESTORE_LOAD');
     command(['--context', context, 'exec', '-i', postgresId, 'pg_restore', '-U', 'ezihubb_m5', '-d', target,
       '--no-owner', '--no-privileges', '--exit-on-error', '--single-transaction'], env, bytes);
+    input.onStage?.('RESTORE_COMPARE');
     assertSnapshotEqual(snapshot, await databaseSnapshot(restoredPool));
     restored = new PrismaClient({ adapter: new PrismaPg(restoredPool), log: [] });
+    input.onStage?.('RESTORE_REPLAY');
     const event = await restored.economicOutbox.findUniqueOrThrow({ where: { id: replayEventId } });
     assert.equal(await consumeVerifiedEconomics(restored, event, 'TEST'), false);
     assertSnapshotEqual(snapshot, await databaseSnapshot(restoredPool));
     assert.equal(await restored.product.count({ where: { id: later.product.id } }), 0);
     assert.equal((await sourceDb.product.findUniqueOrThrow({ where: { id: later.product.id } })).quantity, 9);
+    input.onStage?.('RESTORE_SOURCE');
     assertSnapshotEqual(sourceAfter, await databaseSnapshot(sourcePool));
+    input.onStage?.('RESTORE_METRICS');
     const metrics = measureRestore({ snapshotAt, lastAcknowledgedAt, missingAcknowledgements: 1, rtoMs: performance.now() - rtoStart });
     await restoredPool.query('INSERT INTO m5_guard.fixture_receipt(name,payload) VALUES($1,$2::jsonb)',
       [`m5-recovery-verified:${runId}`, JSON.stringify({ snapshotHash: snapshotHash(snapshot), backupSha256, metrics })]);

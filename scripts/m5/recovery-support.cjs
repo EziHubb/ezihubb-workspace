@@ -9,8 +9,15 @@ const MAX_BACKUP_BYTES = 128 * 1024 * 1024;
 function recoveryFailureDetails(error, stage) {
   const details = safeFailureDetails(error);
   // Fixed harness stages only; no assertion values, messages, SQL or secrets.
-  if (['PRECHECK', 'CATALOG', 'SEED', 'KILL_BARRIER', 'COMMIT_STATE', 'CAPTURE_REPLAY', 'BALANCE_LOTS', 'LIFECYCLE', 'RECOVERY_CASE'].includes(stage)) {
+  if (['PRECHECK', 'CATALOG', 'SEED', 'KILL_BARRIER', 'COMMIT_STATE', 'CAPTURE_REPLAY', 'BALANCE_LOTS', 'LIFECYCLE', 'RECOVERY_CASE',
+    'RESTORE_SNAPSHOT', 'RESTORE_DUMP', 'RESTORE_ARCHIVE', 'RESTORE_ACK', 'RESTORE_TARGET', 'RESTORE_LOAD',
+    'RESTORE_COMPARE', 'RESTORE_REPLAY', 'RESTORE_SOURCE', 'RESTORE_METRICS'].includes(stage)) {
     details.failedStage = stage;
+  }
+  if (['M5_RESTORE_RELATION', 'M5_RESTORE_SIZE_LIMIT', 'M5_RESTORE_SNAPSHOT_ID', 'M5_RESTORE_BACKUP_SIZE',
+    'M5_RESTORE_ARCHIVE_LIST', 'M5_RESTORE_BOOTSTRAP_IDENTITY', 'M5_RESTORE_TARGET_EXISTS', 'M5_RESTORE_BACKUP_CHANGED',
+    'M5_RESTORE_TARGET_IDENTITY', 'M5_RESTORE_SNAPSHOT_MISMATCH', 'M5_RECOVERY_DOCKER_COMMAND', 'M5_RECOVERY_MEASUREMENT'].includes(error?.message)) {
+    details.failureCode = error.message;
   }
   return details;
 }

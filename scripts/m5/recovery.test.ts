@@ -117,6 +117,10 @@ test('recovery diagnostics retain fixed stages and driver identifiers only, incl
   assert.deepEqual(details, { driverCode: 'P2010', driverType: 'PrismaClientKnownRequestError', failedStage: 'BALANCE_LOTS' });
   assert.deepEqual(recoveryFailureDetails({ code: details.driverCode, name: details.driverType }, details.failedStage), details);
   assert.deepEqual(recoveryFailureDetails({ code: 'PRIVATE_SECRET', name: 'PRIVATE' }, 'PRIVATE_URL'), {});
+  const restore = recoveryFailureDetails({ message: 'M5_RESTORE_SNAPSHOT_MISMATCH', actual: 'PRIVATE' }, 'RESTORE_COMPARE');
+  assert.deepEqual(restore, { failedStage: 'RESTORE_COMPARE', failureCode: 'M5_RESTORE_SNAPSHOT_MISMATCH' });
+  assert.deepEqual(recoveryFailureDetails({ message: restore.failureCode }, restore.failedStage), restore);
+  assert.deepEqual(recoveryFailureDetails({ message: 'M5_RESTORE_PRIVATE_SECRET' }, 'PRIVATE_URL'), {});
 });
 
 test('fixed eight-case contract maps to actual native execution, not a skipped drill', () => {
