@@ -17,7 +17,7 @@ overrides:
   canvas: npm:empty-npm-package@1.0.0
   browserslist: 4.28.9
   mysql2: 3.24.3
-  '@nestjs/platform-express>multer': 2.4.0
+  '@nestjs/platform-express>multer': 2.5.0
   '@nestjs/swagger>js-yaml': 4.3.2
   '@prisma/config>deepmerge-ts': 8.0.2
   '@xhmikosr/downloader>@xhmikosr/decompress': 11.1.4
@@ -43,8 +43,8 @@ overrides:
   'brace-expansion@>=1.0.0 <1.1.21': 1.1.21
   'brace-expansion@>=2.0.0 <2.1.7': 2.1.7
   'brace-expansion@>=5.0.0 <5.0.12': 5.0.12
-  'body-parser@>=1.0.0 <1.20.6': 1.20.6
-  'body-parser@>=2.0.0 <2.3.0': 2.3.0
+  'body-parser@>=1.0.0 <1.20.9': 1.20.9
+  'body-parser@>=2.0.0 <2.4.0': 2.4.0
   'axios@>=1.0.0 <1.20.0': 1.20.0
   'postcss-selector-parser@>=6.0.0 <7.1.6': 7.1.6
   'qs@>=6.0.0 <6.16.0': 6.16.0
@@ -55,6 +55,10 @@ overrides:
   'undici@>=7.0.0 <7.29.1': 7.29.1
   'http-cache-semantics@>=4.0.0 <4.3.0': 4.3.0
   'compression@>=1.0.0 <1.8.2': 1.8.2
+
+  # Security fixes required by the November 1 deployment audit.
+  'follow-redirects@>=1.16.0 <1.16.2': 1.16.2
+  're2js@>=2.2.0 <2.8.7': 2.8.7
 
 allowBuilds:
   '@firebase/util': true
