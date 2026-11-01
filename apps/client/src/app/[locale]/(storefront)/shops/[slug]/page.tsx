@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
+import { cache } from 'react';
+import { ApiRequestError, type PaginatedResponse, type ProductListItemDto } from '@ezihubb/types';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { MapPin, ShieldCheck, Star, ShoppingBag, Share2 } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
-import { apiClient } from '@ezihubb/api-client';
+import { api, apiClient } from '@ezihubb/api-client';
 import { API_ROUTES, getShopColorTheme } from '@ezihubb/constants';
 import { StorePageClient } from './StorePageClient';
 import { FollowShopButton } from '../../../../../components/shops/FollowShopButton';
@@ -52,6 +54,17 @@ interface StorePublicDto {
   };
 }
 
+const getStore = cache(async (slug: string, locale: string) => {
+  try {
+    return await api.get<StorePublicDto>(API_ROUTES.STORES.DETAIL(slug), {
+      cache: 'no-store', headers: { 'X-Locale': locale },
+    });
+  } catch (error) {
+    if (error instanceof ApiRequestError && error.statusCode === 404) notFound();
+    throw error;
+  }
+});
+
 interface StoreSocialLink {
   platform: string;
   url: string;
@@ -77,11 +90,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug, locale } = await params;
   const t = await getTranslations({ locale, namespace: 'shops' });
-  const store = await apiClient
-    .get<StorePublicDto>(API_ROUTES.STORES.DETAIL(slug))
-    .catch(() => null);
-
-  if (!store) return { title: t('storePage.storeNotFoundTitle'), robots: { index: false, follow: false } };
+  const store = await getStore(slug, locale);
 
   return buildShopMetadata(store, {
     slug,
@@ -135,11 +144,13 @@ export default async function StorePublicPage({
   const { slug, locale } = await params;
   const t = await getTranslations({ locale, namespace: 'shops' });
 
-  const store = await apiClient
-    .get<StorePublicDto>(API_ROUTES.STORES.DETAIL(slug))
-    .catch(() => null);
-
-  if (!store) notFound();
+  const store = await getStore(slug, locale);
+  // Seed the existing grid so its product links are present before JavaScript runs.
+  const initialProducts = await apiClient.get<PaginatedResponse<ProductListItemDto>>(API_ROUTES.PRODUCTS.LIST, {
+    params: { storeSlug: slug, isActive: true, sort: 'newest', page: 1, limit: 24 },
+    headers: { 'X-Locale': locale },
+    cache: 'no-store',
+  });
 
   const memberSince = new Intl.DateTimeFormat(locale, {
     month: 'long',
@@ -266,6 +277,7 @@ export default async function StorePublicPage({
 
       {/* ── Tab navigation + tab content (client) ────────────────────────────── */}
       <StorePageClient
+        initialProducts={initialProducts}
         store={{
           id:            store.id,
           name:          store.name,

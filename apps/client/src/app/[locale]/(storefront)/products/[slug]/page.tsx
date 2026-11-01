@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
+import { cache, Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { apiClient } from '@ezihubb/api-client';
+import { api, apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
-import { buildAlternates, serializeJsonLd } from '../../../../../lib/seo';
+import { serializeJsonLd } from '../../../../../lib/seo';
 import type { ProductDetailDto, ProductListItemDto, ReviewSummaryDto, CategoryDto } from '@ezihubb/types';
 import type { PaginatedResponse } from '@ezihubb/types';
 import { ProductBreadcrumb } from '../../../../../components/product/ProductBreadcrumb';
@@ -27,7 +27,19 @@ import { ListedInfoFooter } from '../../../../../components/product/ListedInfoFo
 import { ProductQandA } from '../../../../../components/product/ProductQandA';
 import type { QAItem } from '../../../../../components/product/ProductQandA';
 import { warnIfRejected } from '../../../../../lib/warn-if-rejected';
-import { getProductSeoPrice } from '../../../../../lib/product-pricing';
+import { buildProductMetadata } from '../../../../../lib/product-seo';
+import { ApiRequestError } from '@ezihubb/types';
+
+const getProduct = cache(async (slug: string, locale: string) => {
+  try {
+    return await api.get<ProductDetailDto>(API_ROUTES.PRODUCTS.DETAIL(slug), {
+      cache: 'no-store', headers: { 'X-Locale': locale },
+    });
+  } catch (error) {
+    if (error instanceof ApiRequestError && error.statusCode === 404) notFound();
+    throw error; // An API outage must not turn a real product into an indexed 404.
+  }
+});
 
 // Product availability is correctness-sensitive: an archived or permanently
 // deleted listing must stop rendering immediately. Related/review/category
@@ -131,41 +143,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale, slug } = await params;
 
-  const product = await apiClient
-    .get<ProductDetailDto>(API_ROUTES.PRODUCTS.DETAIL(slug), { cache: 'no-store' })
-    .catch(() => null);
-
-  if (!product) return { title: 'Product Not Found', robots: { index: false, follow: false } };
-
-  const description =
-    product.shortDescription ??
-    product.description?.slice(0, 160) ??
-    `Shop ${product.name} — personalized and custom-made at EziHubb.`;
-  const primaryImage = product.images?.[0];
-  const { price } = getProductSeoPrice(product);
-
-  return {
-    title: product.name,
-    description,
-    robots: { index: true, follow: true },
-    openGraph: {
-      title:       product.name,
-      description,
-      type:        'website',
-      url:         `/${locale}/products/${slug}`,
-      images: primaryImage
-        ? [{ url: primaryImage.url, width: 800, height: 800, alt: product.name }]
-        : [{ url: '/og-default.jpg', width: 1200, height: 630 }],
-    },
-    alternates: buildAlternates(`/products/${slug}`, locale),
-    other: {
-      'product:price:amount':   String(price),
-      'product:price:currency': 'USD',
-      'product:availability':   product.isActive ? 'in stock' : 'out of stock',
-      'product:condition':      'new',
-      'product:retailer_item_id': product.sku,
-    },
-  };
+  return buildProductMetadata(await getProduct(slug, locale), locale);
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -180,10 +158,7 @@ export default async function ProductDetailPage({
 
   const [productRes, reviewSummaryRes, relatedRes, qaRes, categoryTreeRes] =
     await Promise.allSettled([
-      apiClient.get<ProductDetailDto>(API_ROUTES.PRODUCTS.DETAIL(slug), {
-        cache: 'no-store',
-        headers: localeHeaders,
-      }),
+      getProduct(slug, locale),
       apiClient.get<ReviewSummaryDto>(API_ROUTES.PRODUCTS.REVIEW_SUMMARY(slug), {
         next: { revalidate: 60 },
       }),
@@ -201,7 +176,7 @@ export default async function ProductDetailPage({
       }),
     ]);
 
-  if (productRes.status === 'rejected') notFound();
+  if (productRes.status === 'rejected') throw productRes.reason;
   const product = productRes.value;
 
   // productRes already 404s above; the rest are optional sections that quietly

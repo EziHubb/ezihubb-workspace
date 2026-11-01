@@ -49,6 +49,8 @@ const withNextIntl = createNextIntlPlugin(intlConfigPath);
  **/
 const nextConfig = {
   nx: {},
+  // Keep titles/canonicals in the initial head for search and sharing crawlers.
+  htmlLimitedBots: /.*/,
   // Requires docker/Dockerfile's production stage to run `node server.js`
   // from .next/standalone — NOT `next start` (see git history: running
   // `next start` against a standalone-configured build silently broke

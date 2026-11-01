@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import type { PaginatedResponse, ProductListItemDto } from '@ezihubb/types';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
@@ -214,10 +215,12 @@ function AboutSection({
 // ── Tab nav + content ─────────────────────────────────────────────────────────
 
 export function StorePageClient({
+  initialProducts,
   store,
   locale,
   theme,
 }: {
+  initialProducts?: PaginatedResponse<ProductListItemDto>;
   store:  StoreDto;
   locale: string;
   /** Ezihubb Plus colour theme, or null for the default app styling. */
@@ -335,6 +338,7 @@ export function StorePageClient({
 
         {activeTab === 'items' && (
           <StoreProductsClient
+            initialProducts={initialProducts}
             storeSlug={store.slug}
             locale={locale}
             searchQuery={searchQuery}

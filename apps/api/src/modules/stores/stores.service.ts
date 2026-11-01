@@ -193,7 +193,7 @@ export class StoresService {
       }),
     ]);
     const data = rows.map(({ _count, ...s }) => ({ ...s, totalProducts: _count.products }));
-    return paginatedResponse(data, total, page, limit);
+    return paginatedResponse(data, page, limit, total);
   }
 
   // ─── Public: Store page ───────────────────────────────────────────────────

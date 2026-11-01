@@ -237,3 +237,7 @@ Currently a single `main` branch — no `develop`/staging branch or automated de
 2. Follow [Conventional Commits](https://www.conventionalcommits.org/): `feat(cart): add coupon validation`
 3. Run `make lint && make test` before opening a PR
 4. PR targets `main` → reviewed → merged → deploy manually with `scripts/deploy.sh`
+
+## Search indexing
+
+See [product/shop SEO changes, Node-only checks and post-deployment Search Console steps](docs/search-indexing.md).

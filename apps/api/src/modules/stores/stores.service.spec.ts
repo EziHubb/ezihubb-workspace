@@ -11,6 +11,8 @@ function makePrismaMock() {
   return {
     store: {
       findUnique: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
       update: jest.fn(),
     },
     product: {
@@ -384,5 +386,18 @@ describe('StoresService shipping support finance report', () => {
         }), { order: { AND: [{}, { economicContext: { is: null } }] } }],
       }),
     }));
+  });
+});
+
+
+describe('StoresService.listStores — public crawl pagination', () => {
+  it('returns the real page, limit and total so callers can discover subsequent shops', async () => {
+    const prisma = makePrismaMock();
+    prisma.store.count.mockResolvedValue(49);
+    prisma.store.findMany.mockResolvedValue([{ id: 'shop', _count: { products: 3 } }]);
+    const result = await makeService(prisma, jest.fn()).listStores(1, 48);
+    expect(result.pagination).toEqual({ page: 1, limit: 48, total: 49, totalPages: 2, hasNext: true, hasPrev: false });
+    expect(result.data).toEqual([{ id: 'shop', totalProducts: 3 }]);
+    expect(prisma.store.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { status: 'ACTIVE' }, skip: 0, take: 48 }));
   });
 });

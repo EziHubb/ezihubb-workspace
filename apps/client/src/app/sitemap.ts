@@ -1,5 +1,6 @@
 ﻿import type { MetadataRoute } from 'next';
 import { API_ROUTES } from '@ezihubb/constants';
+import { buildAlternates } from '../lib/seo';
 import {
   GIFT_GUIDE_SLUGS,
   getGiftGuide,
@@ -27,7 +28,7 @@ interface ProductItem {
 interface SlugItem {
   slug:       string;
   updatedAt?: string;
-  level?:     number;
+  children?:  SlugItem[];
 }
 
 /**
@@ -85,22 +86,21 @@ async function fetchApi<T>(path: string): Promise<T[]> {
 
 /** The API's own ceiling. Asking for more is a 400, not a smaller page. */
 const API_PAGE_LIMIT = 48;
-/** Sitemaps may hold 50,000 URLs; this is well under it and bounds the build. */
+/** shortcut: 1,920 products/shops per sitemap; split sitemap files before exceeding this catalog size. */
 const MAX_PRODUCT_PAGES = 40;
 
 /**
- * Every active product, a page at a time.
+ * Public catalogs, a page at a time (bounded to 1,920 entries per catalog).
  *
  * One request asking for all of them is what broke: the limit is capped at 48
  * server-side, and over-asking fails the whole call rather than returning the
  * first 48.
  */
-async function fetchAllProducts(): Promise<ProductItem[]> {
-  const all: ProductItem[] = [];
+async function fetchAllPages<T>(path: string): Promise<T[]> {
+  const all: T[] = [];
   for (let page = 1; page <= MAX_PRODUCT_PAGES; page++) {
-    const { items, hasNext } = await fetchPage<ProductItem>(
-      `${API_ROUTES.PRODUCTS.LIST}?fields=slug,updatedAt,images,name,shortDescription`
-      + `&limit=${API_PAGE_LIMIT}&page=${page}&isActive=true`,
+    const { items, hasNext } = await fetchPage<T>(
+      `${path}${path.includes('?') ? '&' : '?'}limit=${API_PAGE_LIMIT}&page=${page}`,
     );
     all.push(...items);
     if (!hasNext || !items.length) break;
@@ -112,11 +112,11 @@ async function fetchAllProducts(): Promise<ProductItem[]> {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // All fetches in parallel — individual failures yield empty arrays, never crash
-  const [products, categories, collections, tags] = await Promise.all([
-    fetchAllProducts(),
-    fetchApi<SlugItem>(`${API_ROUTES.CATALOG.CATEGORIES}?isVisible=true&fields=slug,updatedAt,level`),
-    fetchApi<SlugItem>(`${API_ROUTES.CATALOG.COLLECTIONS}?isActive=true&fields=slug,updatedAt`),
-    fetchApi<SlugItem>(`${API_ROUTES.CATALOG.TAGS}?isFeatured=true&fields=slug`),
+  const [products, categories, collections, stores] = await Promise.all([
+    fetchAllPages<ProductItem>(`${API_ROUTES.PRODUCTS.LIST}?isActive=true`),
+    fetchApi<SlugItem>(API_ROUTES.CATALOG.CATEGORIES),
+    fetchApi<SlugItem>(API_ROUTES.CATALOG.COLLECTIONS),
+    fetchAllPages<SlugItem>('/stores'),
   ]);
 
   // `next-intl` routing has no `localePrefix` override, so it defaults to
@@ -136,7 +136,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   // Leaf categories only (level 3) — avoids duplicating parent-category content
-  const leafCategories = categories.filter((c) => c.level === 3 || c.level === undefined);
+  const leaves = (nodes: SlugItem[]): SlugItem[] => nodes.flatMap((node) =>
+    node.children?.length ? leaves(node.children) : [node]);
+  const leafCategories = leaves(categories);
   // A guide with no live catalog would be an empty doorway. Its page metadata
   // noindexes that state, and the sitemap must make the same decision.
   const availableGiftGuideSlugs = GIFT_GUIDE_SLUGS.filter((slug) => {
@@ -154,7 +156,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // ── Priority 1.0: Homepage ──────────────────────────────────────────────
     {
       url:             EN,
-      lastModified:    new Date(),
       changeFrequency: 'daily',
       priority:        1.0,
     },
@@ -171,7 +172,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // ── Priority 0.85: Product pages (with image sitemaps) ─────────────────
     ...products.map((p) => ({
       url:             `${EN}/products/${p.slug}`,
-      lastModified:    p.updatedAt ? new Date(p.updatedAt) : new Date(),
+      lastModified:    p.updatedAt ? new Date(p.updatedAt) : undefined,
+      alternates:      { languages: buildAlternates(`/products/${p.slug}`, 'en').languages },
       changeFrequency: 'weekly' as const,
       priority:        0.85,
       // Plain URL strings. Next's Sitemap type declares `images?: string[]`,
@@ -210,16 +212,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority:        0.7,
     })),
 
-    // ── Priority 0.65: Tag landing pages ────────────────────────────────────
-    // There is no standalone `/tags/[slug]` route in this app — tags are
-    // surfaced as a `/search?tags=` filter (see ExploreRelatedSearches.tsx,
-    // SearchResults.tsx). The old `/tags/${slug}` entries here 404'd for
-    // every single one of these URLs.
-    ...tags.map((t) => ({
-      url:             `${EN}/search?tags=${t.slug}`,
+    // Public active shops are catalog hubs; filtered tags canonicalize to /search.
+    ...stores.flatMap((store) => ['en', 'vi', 'zh'].map((locale) => ({
+      url: `${BASE}/${locale}/shops/${store.slug}`,
+      alternates: { languages: buildAlternates(`/shops/${store.slug}`, locale).languages },
       changeFrequency: 'weekly' as const,
-      priority:        0.65,
-    })),
+      priority: 0.75,
+    }))),
 
     // ── Priority 0.5: Static footer pages ──────────────────────────────────
     ...footerPages.map((slug) => ({
@@ -228,15 +227,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority:        0.5,
     })),
 
-    // ── Priority 0.4: Vietnamese & Chinese locale equivalents (top 100 products) ─────
+    // ── Priority 0.4: Vietnamese & Chinese locale equivalents ─────
     ...(['vi', 'zh'] as const).flatMap((locale) => [
       {
         url:             `${BASE}/${locale}`,
         changeFrequency: 'daily' as const,
         priority:        0.4,
       },
-      ...products.slice(0, 100).map((p) => ({
+      ...products.map((p) => ({
         url:             `${BASE}/${locale}/products/${p.slug}`,
+        alternates:      { languages: buildAlternates(`/products/${p.slug}`, locale).languages },
         changeFrequency: 'weekly' as const,
         priority:        0.4,
       })),

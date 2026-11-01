@@ -246,6 +246,7 @@ function ProductGrid({
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function StoreProductsClient({
+  initialProducts,
   storeSlug,
   locale,
   searchQuery,
@@ -253,6 +254,7 @@ export function StoreProductsClient({
   featuredProductIds,
   featuredLayout,
 }: {
+  initialProducts?: PaginatedProducts;
   storeSlug:      string;
   locale:         string;
   searchQuery?:   string;
@@ -299,7 +301,7 @@ export function StoreProductsClient({
   const hasPinned = pinnedIds.length > 0;
 
   const { data: featuredData, isLoading: featuredLoading } = useQuery<PaginatedProducts>({
-    queryKey: ['store-products-featured', storeSlug, hasPinned ? pinnedIds.join(',') : 'flag'],
+    queryKey: ['store-products-featured', storeSlug, locale, hasPinned ? pinnedIds.join(',') : 'flag'],
     queryFn:  () => apiClient.get<PaginatedProducts>(API_ROUTES.PRODUCTS.LIST, {
       params: hasPinned
         ? { storeSlug, ids: pinnedIds.join(','), isActive: true, limit: pinnedIds.length }
@@ -323,7 +325,8 @@ export function StoreProductsClient({
   };
 
   const { data: allData, isLoading: allLoading } = useQuery<PaginatedProducts>({
-    queryKey: ['store-products', storeSlug, sort, page, selectedSection, onSaleFilter, searchQuery],
+    queryKey: ['store-products', storeSlug, locale, sort, page, selectedSection, onSaleFilter, searchQuery],
+    initialData: !hasFilter && sort === 'newest' && page === 1 ? initialProducts : undefined,
     queryFn:  () => apiClient.get<PaginatedProducts>(API_ROUTES.PRODUCTS.LIST, { params: allParams }),
     staleTime: 30_000,
   });
